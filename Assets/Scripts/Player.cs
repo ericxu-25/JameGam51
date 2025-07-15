@@ -2,18 +2,18 @@ using UnityEngine;
 
 public class Player : MonoBehaviour
 {
-    [SerializeField] private Health health;
+    [SerializeField] private Stats stats;
     public int damage = 10;
 
     private void Awake()
     {
-        if (health == null)
-            health = GetComponent<Health>();
+        if (stats == null)
+            stats = GetComponent<Stats>();
 
-        health.Died.AddListener(OnDeath);
-        health.Damaged.AddListener(OnDamaged);
-        health.Healed.AddListener(OnHealed);
-        health.ShieldChanged.AddListener(OnShieldChanged);
+        stats.Died.AddListener(OnDeath);
+        stats.Damaged.AddListener(OnDamaged);
+        stats.Healed.AddListener(OnHealed);
+        stats.ShieldChanged.AddListener(OnShieldChanged);
     }
 
     private void OnDeath() => Debug.Log("Player died.");
