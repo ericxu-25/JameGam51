@@ -1,0 +1,26 @@
+using UnityEngine;
+
+public class InventoryHighlight : MonoBehaviour
+{
+    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    [SerializeField] RectTransform highlighter;
+
+    public void setSize(InventoryItem targetItem)
+    {
+        Vector2 size = new Vector2();
+        size.x = targetItem.itemData.width * ItemGrid.tileSizeWidth;
+        size.y = targetItem.itemData.height * ItemGrid.tileSizeHeight;
+        highlighter.sizeDelta = size;
+    }
+
+    public void setPosition(ItemGrid targetGrid, InventoryItem targetItem)
+    {
+        highlighter.SetParent(targetGrid.GetComponent<RectTransform>());
+        Vector2 pos = targetGrid.CalculatePositionOnGrid(
+            targetItem,
+            targetItem.onGridPositionX,
+            targetItem.onGridPositionY);
+
+        highlighter.localPosition = pos;
+    }
+}

@@ -1,10 +1,11 @@
+using System;
 using UnityEngine;
 using UnityEngine.PlayerLoop;
 
 public class ItemGrid : MonoBehaviour
 {
-    const float tileSizeWidth = 32;
-    const float tileSizeHeight = 32;
+    public const float tileSizeWidth = 32;
+    public const float tileSizeHeight = 32;
 
     [SerializeField] int gridNumRows = 5;
     [SerializeField] int gridNumCols = 5;
@@ -23,8 +24,23 @@ public class ItemGrid : MonoBehaviour
     public InventoryItem PickUpItem(int x, int y)
     {
         InventoryItem toReturn = inventoryItemSlot[x, y];
-        inventoryItemSlot[x, y] = null;
+
+        if (toReturn == null) { return null; }
+
+        CleanGrid(toReturn);
+
         return toReturn;
+    }
+
+    private void CleanGrid(InventoryItem toReturn)
+    {
+        for (int ix = 0; ix < toReturn.itemData.width; ix++)
+        {
+            for (int iy = 0; iy < toReturn.itemData.height; iy++)
+            {
+                inventoryItemSlot[toReturn.onGridPositionX + ix, toReturn.onGridPositionY + iy] = null;
+            }
+        }
     }
 
     private void Init(int width, int height)
@@ -49,16 +65,107 @@ public class ItemGrid : MonoBehaviour
 
     }
 
-    public void PlaceItem(InventoryItem inventoryItem, int posX, int posY)
+    public bool PlaceItem(InventoryItem inventoryItem, int posX, int posY, ref InventoryItem overlapItem)
     {
+        //item out of bounds
+        if (BoundaryCheck(posX, posY, inventoryItem.itemData.width, inventoryItem.itemData.height) == false)
+        {
+            return false;
+        }
+
+        if (OverlapCheck(posX, posY, inventoryItem.itemData.width, inventoryItem.itemData.height, ref overlapItem) == false)
+        {
+            overlapItem = null;
+            return false;
+        }
+
+        if (overlapItem != null)
+        {
+            CleanGrid(overlapItem);
+        }
+
         RectTransform rectTransform = inventoryItem.GetComponent<RectTransform>();
         rectTransform.SetParent(this.rectTransform);
-        inventoryItemSlot[posX, posY] = inventoryItem;
 
-        Vector2 position = new Vector2();
-        position.x = posX * tileSizeWidth + tileSizeWidth / 2;
-        position.y = -(posY * tileSizeHeight + tileSizeHeight / 2);
+        for (int x = 0; x < inventoryItem.itemData.width; x++)
+        {
+            for (int y = 0; y < inventoryItem.itemData.height; y++)
+            {
+                inventoryItemSlot[posX + x, posY + y] = inventoryItem;
+            }
+        }
+
+        inventoryItem.onGridPositionX = posX;
+        inventoryItem.onGridPositionY = posY;
+
+        Vector2 position = CalculatePositionOnGrid(inventoryItem, posX, posY);
 
         rectTransform.localPosition = position;
+
+        return true;
+    }
+
+    public Vector2 CalculatePositionOnGrid(InventoryItem inventoryItem, int posX, int posY)
+    {
+        Vector2 position = new Vector2();
+        position.x = posX * tileSizeWidth + tileSizeWidth * inventoryItem.itemData.width / 2;
+        position.y = -(posY * tileSizeHeight + tileSizeHeight * inventoryItem.itemData.height / 2);
+        return position;
+    }
+
+    private bool OverlapCheck(int posX, int posY, int width, int height, ref InventoryItem overlapItem)
+    {
+        // dont like this overlapcheck, iterates through the whole grid, prob can do something else
+        //nm this checks for more than one item, honestly not bad w/ limited inventory size
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                if (inventoryItemSlot[posX + x, posY + y] != null)
+                {
+                    if (overlapItem == null)
+                    {
+                        overlapItem = inventoryItemSlot[posX + x, posY + y];
+                    }
+                    else
+                    {
+                        if (overlapItem != inventoryItemSlot[posX + x, posY + y])
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    bool PositionCheck(int posX, int posY)
+    {
+        if (posX < 0 || posY < 0)
+        {
+            return false;
+        }
+
+        if (posX >= gridNumRows || posY >= gridNumCols)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    bool BoundaryCheck(int posX, int posY, int width, int height)
+    {
+        if (PositionCheck(posX, posY) == false) { return false; }
+        posX += width-1;
+        posY += height-1;
+        if (PositionCheck(posX, posY) == false) { return false; }
+        return true;
+    }
+
+    internal InventoryItem GetItem(int x, int y)
+    {
+        return inventoryItemSlot[x, y];
     }
 }
