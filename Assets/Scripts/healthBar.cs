@@ -1,35 +1,28 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class healthBar : MonoBehaviour
+public class HealthBar : MonoBehaviour
 {
-
     public Slider healthSlider;
-    public float maxHealth = 100f;
-    public float health;
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    [SerializeField] private Stats stats; // Reference to the Stats component
+
+    private void Start()
     {
-        health = maxHealth;
-        healthSlider.maxValue = maxHealth;
+        if (stats == null)
+            Debug.Log("Error, no stats assigned");
+
+        // Initialize the slider
+        healthSlider.maxValue = stats.MaxHP;
+        healthSlider.value = stats.HP;
+
+        // Subscribe to health changes
+        stats.Damaged.AddListener(UpdateHealthBar);
+        stats.Healed.AddListener(UpdateHealthBar);
     }
 
-    // Update is called once per frame
-    void Update()
+    private void UpdateHealthBar(int health)
     {
-        if (healthSlider.value != health)
-        {
-            healthSlider.value = health;
-        }
-
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            takeDamage(33);
-        }
-    }
-
-    void takeDamage(int damage)
-    {
-        health -= Mathf.Min(health, damage);
+        healthSlider.value = health;
     }
 }
