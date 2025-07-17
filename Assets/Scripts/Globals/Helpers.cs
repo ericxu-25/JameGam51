@@ -15,6 +15,110 @@ namespace Globals
         public bool enabled;
         public AnimationCurve scaling;
     }
+    public class ListHelpers { 
+        /// <summary>
+        /// Returns a random choice from a list
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="list"></param>
+        /// <returns></returns>
+        public static T RandomFromList<T>(List<T> list) {
+            if (list.Count <= 0) return default(T);
+            return list[Random.Range(0, list.Count)];
+        }
+
+        /// <summary>
+        /// Returns a random choice from an array within bounds. The max index is exclusive
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="list"></param>
+        /// <param name="minIndex"></param>
+        /// <param name="maxIndex"></param>
+        /// <returns></returns>
+        public static T RandomFromList<T>(List<T> list, int minIndex, int maxIndex) { 
+            if (list.Count<= minIndex) return default(T);
+            return list[Random.Range(minIndex, maxIndex)];
+        }
+
+        /// <summary>
+        /// Returns a random choice from an array 
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="list"></param>
+        /// <returns></returns>
+        public static T RandomFromArray<T>(T[] list) { 
+            if (list.Length<= 0) return default(T);
+            return list[Random.Range(0, list.Length)];
+        }
+
+        /// <summary>
+        /// Returns a random choice from an array within bounds. The max index is exclusive
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="list"></param>
+        /// <param name="minIndex"></param>
+        /// <param name="maxIndex"></param>
+        /// <returns></returns>
+        public static T RandomFromArray<T>(T[] list, int minIndex, int maxIndex) { 
+            if (list.Length <= minIndex) return default(T);
+            return list[Random.Range(minIndex, maxIndex)];
+        }
+
+        public delegate int GetWeight<T>(T item);
+
+        /// <summary>
+        /// Returns a weighted random choice from an array. Accepts an optional totalWeight value.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="list"></param>
+        /// <param name="weightFunction"></param>
+        /// <param name="totalWeight"></param>
+        /// <returns></returns>
+        public static T WeightedRandomFromList<T>(T[] list, GetWeight<T> weightFunction, int totalWeight = 0) {
+            if (list.Length <= 0) return default(T);
+            if (totalWeight == 0)
+            {
+                for (int i = 0; i < list.Length; ++i)
+                {
+                    totalWeight += Mathf.Abs(weightFunction(list[i]));
+                }
+            }
+            int choice = Mathf.FloorToInt(Random.value * totalWeight);
+            int currentWeight = 0;
+            for (int i = 0; i < list.Length; ++i) {
+                currentWeight += Mathf.Abs(weightFunction(list[i]));
+                if (currentWeight >= choice) return list[i];
+            }
+            return default(T);
+        }
+
+        /// <summary>
+        /// Returns a weighted random choice from an list. Accepts an optional totalWeight value
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="list"></param>
+        /// <param name="weightFunction"></param>
+        /// <param name="totalWeight"></param>
+        /// <returns></returns>
+        public static T WeightedRandomFromList<T>(List<T> list, GetWeight<T> weightFunction, int totalWeight = 0)
+        {
+            if (list.Count <= 0) return default(T);
+            if (totalWeight == 0)
+            {
+                for (int i = 0; i < list.Count; ++i)
+                {
+                    totalWeight += Mathf.Abs(weightFunction(list[i]));
+                }
+            }
+            int choice = Mathf.FloorToInt(Random.value * totalWeight);
+            int currentWeight = 0;
+            for (int i = 0; i < list.Count; ++i) {
+                currentWeight += Mathf.Abs(weightFunction(list[i]));
+                if (currentWeight >= choice) return list[i];
+            }
+            return default(T);
+        }
+    }
     public class PhysicsHelpers
     {
         /// <summary>
