@@ -41,21 +41,21 @@ namespace Map
         public float distance = 0f;
 
         /// <summary>
-        /// adjacent neighbors of the node on the same path (including itself)
-        /// Will be just itself if it is a single node
+        /// adjacent neighbors of the node on the same path at the same index (including itself)
+        /// Will be just itself if it is a single node, more if a split node
         /// </summary>
         [HideInInspector]
         public List<MapNode> neighbors = null;
 
-        public bool Single { get { return neighbors != null && neighbors.Count == 1; } }
+        public bool Single { get { return neighbors == null && neighbors.Count == 1; } }
+
+        public int Siblings { get { return (neighbors == null ? 0 : neighbors.Count - 1); } }
 
         /// <summary>
         /// Whether this node is a bonus node or not (created by splitting twice)
         /// </summary>
         [HideInInspector]
         public bool bonus = false;
-        public bool Bonus { get { return bonus; } }
-
 
         /// <summary>
         /// Returns if this node is a valid addition as the next node to the current path
@@ -77,6 +77,15 @@ namespace Map
             MapPath path = new MapPath(this, nextNode, connection);
             path.SyncPath();
             paths.Add(path);
+        }
+
+        /// <summary>
+        /// Called on each node right after it is generated.
+        /// </summary>
+        /// <param name="currentPath"></param>
+        /// <param name="allPaths"></param>
+        public virtual void OnGenerate(List<MapNode> currentPath, List<List<MapNode>> allPaths) { 
+            
         }
 
         public void ResetPathConnections() {

@@ -7,21 +7,32 @@ namespace Map
     /// <summary>
     /// Script that manages the creation and storage of path nodes
     /// </summary>
-    public class MapScript : MonoBehaviour
+    [RequireComponent(typeof(RectTransform))]
+    public class Map : MonoBehaviour
     {
         [SerializeField, Tooltip("Definition for generating the map")]
         public MapDefinition MapParameters;
 
         private List<List<MapNode>> _paths = null;
 
+        private MapNode _start = null;
+        private List<MapNode> _ends = null;
+        private RectTransform rectTransform = null;
+        private int _seed = 0;
+
         private void OnValidate()
         {
             if (_paths == null) {
                 _paths = new List<List<MapNode>>();
             }
-            if (MapParameters.NodesToGenerate.Length <= 0) {
+            if (!MapParameters) {
+                Debug.LogError("Must have a valid MapDefinition for map generation");
+            }
+            else if (MapParameters.NodesToGenerate.Length <= 0) {
                 Debug.LogError("Must have a defined set of nodes to generate in MapDefinition");
             }
+            rectTransform = GetComponent<RectTransform>();
+            Random.InitState(_seed);
         }
 
         // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -31,14 +42,136 @@ namespace Map
         }
 
         /// <summary>
-        /// Generates the entire map with nodes
+        /// Destroys the map
         /// </summary>
-        public void GenerateMap() {
-            // generate the nodes and the connections between them
-            for (int i = 0; i < MapParameters.totalPaths; ++i) {
-                _paths.Add(GeneratePath());
+        public void DestroyMap() {
+            Debug.Log("resetting map!");
+            _paths.Clear();
+            foreach (Transform t in this.transform) {
+                Destroy(t);
+            }
+            System.GC.Collect();
+        }
+
+        /// <summary>
+        /// Takes all the generated map nodes and displays them at the correct location
+        /// </summary>
+        public void DisplayMap() {
+            if (_paths.Count <= 0) {
+                Debug.LogError("Cannot display a map that does not exist yet!");
+                return;
+            }
+            // calculate relevant positioning and noise variables
+            float verticalGap = 1f / (_paths.Count + 1);
+            // noise stuff
+            Random.InitState(_seed);
+            Vector2 noiseOffset = new Vector2(Random.Range(0, 1000), Random.Range(0, 1000));
+            Vector2 maxNoiseDrift = new Vector2(1f / (MapParameters.maxPathLength + 2) / 2.2f, verticalGap / 2.2f);
+            // positioning
+            Rect bounds = rectTransform.rect;
+            bounds.position = rectTransform.TransformPoint(bounds.position);
+
+            // position each node on each path on the correct position
+            for (int i = 0; i < _paths.Count; ++i) {
+                List<MapNode> path = _paths[i];
+                bool middlePath = i == _paths.Count / 2;
+                for (int j = middlePath? 0: 1; j < _paths.Count - (middlePath? 0 : _ends.Count); ++j) {
+                    MapNode node = path[j];
+                    if (node.Single)
+                    {
+                        node.transform.position = bounds.min + new Vector2(node.distance * bounds.width, verticalGap * i * bounds.height);
+                        Vector2 noisePosition = noiseOffset + Helpers.Vec3ToVec2(node.transform.position);
+                        Vector2 noiseShift = new Vector2(Mathf.PerlinNoise1D(noisePosition.x) - 0.5f, Mathf.PerlinNoise1D(noisePosition.y) - 0.5f);
+                        noisePosition = Vector2.Scale(maxNoiseDrift, noiseShift);
+                        node.transform.position = new Vector3(noisePosition.x, noisePosition.y, node.transform.position.z);
+                        continue;
+                    }
+                    // node with siblings - do all siblings at once
+                    float splitVerticalGap = verticalGap / (node.Siblings + 1) / 2f;
+                    float splitStartVerticalPosition = verticalGap * (i - 0.5f);
+                    for (int k = 0; k < node.Siblings; ++k) {
+                        node = path[j + k];
+                        float splitVerticalPosition = (splitStartVerticalPosition + splitVerticalGap * k);
+                        node.transform.position = bounds.min + new Vector2(node.distance * bounds.width,  splitVerticalPosition * bounds.height);
+                        Vector2 noisePosition = noiseOffset + Helpers.Vec3ToVec2(node.transform.position);
+                        Vector2 noiseShift = new Vector2(Mathf.PerlinNoise1D(noisePosition.x) - 0.5f, Mathf.PerlinNoise1D(noisePosition.y) - 0.5f);
+                        noisePosition = Vector2.Scale(maxNoiseDrift / (node.Siblings + 1), noiseShift);
+                        node.transform.position = new Vector3(noisePosition.x, noisePosition.y, node.transform.position.z);
+                        ++j;
+                    }
+                }
+            }
+
+            // update each node's connecting lines
+            foreach(List<MapNode> path in _paths) {
+                foreach (MapNode node in path) {
+                    node.ResetPathConnections();
+                }
             }
         }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="seed"></param>
+        public void GenerateMap(int seed = 0) {
+            if (seed == 0) {
+                seed = (int) System.DateTime.Now.Ticks;
+            }
+            _seed = seed;
+            Random.InitState(seed);
+            Debug.Log("Creating map with seed of " + seed.ToString());
+            // clear the map
+            DestroyMap();
+            // create start and ending nodes
+            _start = MakeChildCopy(MapParameters.startingNode);
+            _start.distance = 0f;
+            _ends = new List<MapNode>();
+            foreach(MapNode endingNode in MapParameters.endingNode)
+            {
+                MapNode end = MakeChildCopy(endingNode);
+                end.distance = 1f;
+                _ends.Add(end);
+            }
+            // generate the nodes and the connections between them
+            for (int i = 0; i < MapParameters.totalPaths; ++i) {
+                _paths.Add(GeneratePath(_start, _ends));
+            }
+            // perform post generation updates for each node
+            foreach (List<MapNode> path in _paths)
+            {
+                foreach (MapNode node in path)
+                {
+                    node.OnGenerate(path, _paths);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Generates a list of MapNode game objects based on the given map configuration for a single path
+        /// </summary>
+        /// <returns></returns>
+        private List<MapNode> GeneratePath(MapNode start, List<MapNode> ends)
+        {
+            List<MapNode> path = new List<MapNode>();
+            // ensure starting node is connected
+            List<MapNode> previousNodes = new List<MapNode>();
+            previousNodes.Add(start);
+            path.Add(start);
+            // generated the nodes for the path
+            int nodesToGenerate = Random.Range(MapParameters.minPathLength, MapParameters.maxPathLength + 1);
+            for (int i = 0; i < nodesToGenerate; ++i)
+            {
+                // need to add offset for index and total nodes to account for start and ending nodes
+                GenerateNextNodesInPath(ref previousNodes, ref path, i + 1, nodesToGenerate + 2);
+            }
+            // connect all final nodes to the ending nodes
+            ConnectNodes(previousNodes, ends, path);
+            path.AddRange(ends);
+            return path;
+        }
+
+
 
         /// <summary>
         /// Appends and connects new nodes onto the path given the previous nodes that were added onto the path
@@ -66,6 +199,12 @@ namespace Map
                 else
                 {
                     nextNode = GenerateNextNode(ListHelpers.RandomFromList(previousNodes), path, MapParameters.NodesToGenerate);
+                }
+                // determine if we connect this node to its neighbor
+                if (nextNodes.Count > 0 && Random.value < MapParameters.splitConnectionChance.Evaluate(distance)) {
+                    MapNode neighborNode = nextNodes[nextNodes.Count - 1];
+                    MapConnection nodeConnection = CreateConnection(neighborNode, nextNode, path);
+                    nextNode.ConnectTo(neighborNode, nodeConnection);
                 }
                 nextNodes.Add(nextNode);
             }
@@ -138,24 +277,6 @@ namespace Map
         }
 
         /// <summary>
-        /// Generates a list of MapNode game objects based on the given map configuration for a single path
-        /// </summary>
-        /// <returns></returns>
-        private List<MapNode> GeneratePath()
-        {
-            List<MapNode> previousNodes = new List<MapNode>();
-            List<MapNode> path = new List<MapNode>();
-            // generated the nodes for the path
-            int nodesToGenerate = Random.Range(MapParameters.minPathLength, MapParameters.maxPathLength + 1);
-            float stepSize = 1f / nodesToGenerate;
-            for (int i = 0; i < nodesToGenerate; ++i)
-            {
-                GenerateNextNodesInPath(ref previousNodes, ref path, i, nodesToGenerate);
-            }
-            return path;
-        }
-
-        /// <summary>
         /// Returns the next path node to generate based on a single previous node and the previous path
         /// </summary>
         /// <param name="previousNode"></param>
@@ -175,7 +296,24 @@ namespace Map
             {
                 newNode = result.node;
             }
+            newNode = Instantiate(newNode);
+            newNode.transform.SetParent(this.transform);
+            newNode.name = "Generated " + newNode.name;
             return newNode;
+        }
+
+        /// <summary>
+        /// Creates a copy of the object as a child of this transform
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="original"></param>
+        /// <returns></returns>
+        private T MakeChildCopy<T>(T original) where T : MonoBehaviour
+        {
+            T copy = Instantiate(original);
+            copy.transform.SetParent(this.transform);
+            copy.name = "Generated " + copy.name;
+            return copy;
         }
 
         /// <summary>
@@ -197,18 +335,17 @@ namespace Map
             List<MapNode> remainingNodes = new List<MapNode>(currentNodes);
             foreach (MapNode previousNode in previousNodes)
             {
+                MapNode nextNode = null;
                 if (remainingNodes.Count > 0)
                 {
                     // Connect to valid corresponding unconnected node
                     List<MapNode> validNodes = GetValidNodes(previousNode, remainingNodes, path);
-                    MapNode nextNode = validNodes.Count > 0 ? validNodes[0] : null;
+                    nextNode = validNodes.Count > 0 ? validNodes[0] : null;
                     if (nextNode == null)
                     {
                         nextNode = remainingNodes[0];
                     }
                     remainingNodes.Remove(nextNode);
-                    MapConnection nodeConnection = CreateConnection(previousNode, nextNode, path);
-                    previousNode.ConnectTo(nextNode, nodeConnection);
                 }
                 else { 
                     // We have connected to all current nodes but there are still previous nodes that are unconnected
@@ -222,7 +359,6 @@ namespace Map
 
                     // if we don't ignore it, connect it to a random valid current node.
                     List<MapNode> validNodes = GetValidNodes(previousNode, currentNodes, path);
-                    MapNode nextNode = null;
                     if (validNodes.Count > 0) {
                         nextNode = validNodes[Random.Range(0, validNodes.Count - 1)];
                     }
@@ -230,9 +366,9 @@ namespace Map
                     if (nextNode == null) {
                         nextNode = ListHelpers.RandomFromList(currentNodes);
                     }
-                    MapConnection nodeConnection = CreateConnection(previousNode, nextNode, path);
-                    previousNode.ConnectTo(nextNode, nodeConnection);
                 }
+                MapConnection nodeConnection = CreateConnection(previousNode, nextNode, path);
+                previousNode.ConnectTo(nextNode, nodeConnection);
             }
             // if there are remaining nodes to connect to, then we simply connect a random valid previous to each remaining current node
             if (remainingNodes.Count > 0) {
@@ -260,11 +396,11 @@ namespace Map
         /// <returns></returns>
         private MapConnection CreateConnection(MapNode previousNode, MapNode currentNode, List<MapNode> path) {
             MapConnection nodeConnection = Instantiate(MapParameters.BaseNodeConnector);
+            nodeConnection.transform.SetParent(this.transform);
             // an invalid connection should rarely happen, but if it does we make the player say something to acknowledge it
             if (!currentNode.IsValid(previousNode, path)) { 
                 nodeConnection.TravelMessages.Add("I don't remember this path being here...");
             }
-            // TODO - ambush stuff
             return nodeConnection;
         }
 

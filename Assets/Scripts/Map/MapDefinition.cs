@@ -56,7 +56,7 @@ namespace Map
         [SerializeField, Tooltip("Chance a valid hidden node will generate on a path based on distance")]
         public AnimationCurve HiddenNodeChance;
 
-        [SerializeField, Tooltip("Node(s) to start from")]
+        [SerializeField, Tooltip("Node to start from")]
         public MapNode startingNode;
 
         [SerializeField, Tooltip("Node(s) to end at")]
