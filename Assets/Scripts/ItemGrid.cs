@@ -7,8 +7,8 @@ public class ItemGrid : MonoBehaviour
     public const float tileSizeWidth = 32;
     public const float tileSizeHeight = 32;
 
-    [SerializeField] int gridNumRows = 5;
-    [SerializeField] int gridNumCols = 5;
+    [SerializeField] int gridSizeWidth = 5; //gridSizeWidth
+    [SerializeField] int gridSizeHeight = 5; //gridSizeHeight
     // [SerializeField] GameObject inventoryItemPrefab;
 
     InventoryItem[,] inventoryItemSlot;
@@ -17,7 +17,7 @@ public class ItemGrid : MonoBehaviour
     private void Start()
     {
         rectTransform = GetComponent<RectTransform>();
-        Init(gridNumRows, gridNumCols);
+        Init(gridSizeWidth, gridSizeHeight);
 
     }
 
@@ -34,9 +34,9 @@ public class ItemGrid : MonoBehaviour
 
     private void CleanGrid(InventoryItem toReturn)
     {
-        for (int ix = 0; ix < toReturn.itemData.width; ix++)
+        for (int ix = 0; ix < toReturn.WIDTH; ix++)
         {
-            for (int iy = 0; iy < toReturn.itemData.height; iy++)
+            for (int iy = 0; iy < toReturn.HEIGHT; iy++)
             {
                 inventoryItemSlot[toReturn.onGridPositionX + ix, toReturn.onGridPositionY + iy] = null;
             }
@@ -68,12 +68,12 @@ public class ItemGrid : MonoBehaviour
     public bool PlaceItem(InventoryItem inventoryItem, int posX, int posY, ref InventoryItem overlapItem)
     {
         //item out of bounds
-        if (BoundaryCheck(posX, posY, inventoryItem.itemData.width, inventoryItem.itemData.height) == false)
+        if (BoundaryCheck(posX, posY, inventoryItem.WIDTH, inventoryItem.HEIGHT) == false)
         {
             return false;
         }
 
-        if (OverlapCheck(posX, posY, inventoryItem.itemData.width, inventoryItem.itemData.height, ref overlapItem) == false)
+        if (OverlapCheck(posX, posY, inventoryItem.WIDTH, inventoryItem.HEIGHT, ref overlapItem) == false)
         {
             overlapItem = null;
             return false;
@@ -84,12 +84,19 @@ public class ItemGrid : MonoBehaviour
             CleanGrid(overlapItem);
         }
 
+        PlaceItem(inventoryItem, posX, posY);
+
+        return true;
+    }
+
+    public void PlaceItem(InventoryItem inventoryItem, int posX, int posY)
+    {
         RectTransform rectTransform = inventoryItem.GetComponent<RectTransform>();
         rectTransform.SetParent(this.rectTransform);
 
-        for (int x = 0; x < inventoryItem.itemData.width; x++)
+        for (int x = 0; x < inventoryItem.WIDTH; x++)
         {
-            for (int y = 0; y < inventoryItem.itemData.height; y++)
+            for (int y = 0; y < inventoryItem.HEIGHT; y++)
             {
                 inventoryItemSlot[posX + x, posY + y] = inventoryItem;
             }
@@ -101,15 +108,13 @@ public class ItemGrid : MonoBehaviour
         Vector2 position = CalculatePositionOnGrid(inventoryItem, posX, posY);
 
         rectTransform.localPosition = position;
-
-        return true;
     }
 
     public Vector2 CalculatePositionOnGrid(InventoryItem inventoryItem, int posX, int posY)
     {
         Vector2 position = new Vector2();
-        position.x = posX * tileSizeWidth + tileSizeWidth * inventoryItem.itemData.width / 2;
-        position.y = -(posY * tileSizeHeight + tileSizeHeight * inventoryItem.itemData.height / 2);
+        position.x = posX * tileSizeWidth + tileSizeWidth * inventoryItem.WIDTH / 2;
+        position.y = -(posY * tileSizeHeight + tileSizeHeight * inventoryItem.HEIGHT / 2);
         return position;
     }
 
@@ -139,6 +144,39 @@ public class ItemGrid : MonoBehaviour
         }
         return true;
     }
+    private bool CheckAvailableSpace(int posX, int posY, int width, int height)
+    {
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                if (inventoryItemSlot[posX + x, posY + y] != null)
+                {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+
+    //FOR IRREGULAR SHAPES (IMPLEMENT LATER(?))
+    // private bool CheckAvailableSpace(int posX, int posY, InventoryItem item)
+    // {
+    //     for (int x = 0; x < item.Width; x++)
+    //     {
+    //         for (int y = 0; y < item.Height; y++)
+    //         {
+    //             if (!item.shape[x, y]) continue; // Skip unused parts of the shape
+
+    //             if (inventoryItemSlot[posX + x, posY + y] != null)
+    //             {
+    //                 return false;
+    //             }
+    //         }
+    //     }
+    //     return true;
+    // }
 
     bool PositionCheck(int posX, int posY)
     {
@@ -147,7 +185,7 @@ public class ItemGrid : MonoBehaviour
             return false;
         }
 
-        if (posX >= gridNumRows || posY >= gridNumCols)
+        if (posX >= gridSizeWidth || posY >= gridSizeHeight)
         {
             return false;
         }
@@ -155,7 +193,7 @@ public class ItemGrid : MonoBehaviour
         return true;
     }
 
-    bool BoundaryCheck(int posX, int posY, int width, int height)
+    public bool BoundaryCheck(int posX, int posY, int width, int height)
     {
         if (PositionCheck(posX, posY) == false) { return false; }
         posX += width-1;
@@ -167,5 +205,24 @@ public class ItemGrid : MonoBehaviour
     internal InventoryItem GetItem(int x, int y)
     {
         return inventoryItemSlot[x, y];
+    }
+
+    public Vector2Int? FindSpaceForObject(InventoryItem itemToInsert)
+    {
+        // Can optimize
+        int height = gridSizeHeight - itemToInsert.HEIGHT + 1;
+        int width = gridSizeWidth - itemToInsert.WIDTH + 1;
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                if (CheckAvailableSpace(x, y, itemToInsert.WIDTH, itemToInsert.HEIGHT))
+                {
+                    return new Vector2Int(x, y);
+                }
+            }
+        }
+
+        return null;
     }
 }

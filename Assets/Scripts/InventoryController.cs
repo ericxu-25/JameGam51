@@ -1,12 +1,24 @@
 using System;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class InventoryController : MonoBehaviour
 {
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     [HideInInspector]
-    public ItemGrid selectedItemGrid;
+    private ItemGrid selectedItemGrid;
+
+    public ItemGrid SelectedItemGrid
+    {
+        get => selectedItemGrid;
+        set
+        {
+            selectedItemGrid = value;
+            inventoryHighlight.SetParent(value);
+        }
+    }
 
     InventoryItem selectedItem;
     InventoryItem overlapItem;
@@ -32,10 +44,27 @@ public class InventoryController : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.Q))
         {
-            CreateRandomItem();
+            if (selectedItem == null)
+            {
+            CreateRandomItem();           
+            }
         }
 
-        if (selectedItemGrid == null) { return; }
+        if (Input.GetKeyDown(KeyCode.W))
+        {
+            InsertRandomItem();
+        }
+
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            RotateItem();
+        }
+
+        if (selectedItemGrid == null)
+        {
+            inventoryHighlight.Show(false);
+            return;
+        }
 
         HandleHighlight();
 
@@ -46,24 +75,63 @@ public class InventoryController : MonoBehaviour
         }
     }
 
+    private void RotateItem()
+    {
+        if (selectedItem == null) { return; }
+        selectedItem.Rotate();
+    }
 
+    private void InsertRandomItem()
+    {
+        if (selectedItemGrid == null){ Debug.Log("selectedItemGrid is  null in insertRandomItem"); return; }
+        CreateRandomItem();
+        InventoryItem itemToInsert = selectedItem;
+        selectedItem = null;
+        InsertItem(itemToInsert);
+    }
+
+    private void InsertItem(InventoryItem itemToInsert)
+    {
+        if (selectedItemGrid == null){ Debug.Log("selectedItemGrid is  null in insertItem"); return; }
+        Vector2Int? posOnGrid = selectedItemGrid.FindSpaceForObject(itemToInsert);
+
+        if (posOnGrid == null) { Debug.Log("posOnGrid is  null in insertItem"); return; }
+
+        selectedItemGrid.PlaceItem(itemToInsert, posOnGrid.Value.x, posOnGrid.Value.y);
+    }
+
+    Vector2Int oldPosition;
     InventoryItem itemToHighlight;
     private void HandleHighlight()
     {
         Vector2Int positionOnGrid = GetTileGridPosition();
+        if(oldPosition == positionOnGrid){ return; }
+        oldPosition = positionOnGrid;
         if (selectedItem == null)
         {
             itemToHighlight = selectedItemGrid.GetItem(positionOnGrid.x, positionOnGrid.y);
             if (itemToHighlight != null)
             {
-                inventoryHighlight.setSize(itemToHighlight);
-                inventoryHighlight.setPosition(selectedItemGrid, itemToHighlight);
+                inventoryHighlight.Show(true);
+                inventoryHighlight.SetSize(itemToHighlight);
+                // inventoryHighlight.SetParent(selectedItemGrid);
+                inventoryHighlight.SetPosition(selectedItemGrid, itemToHighlight);
+            }
+            else
+            {
+                inventoryHighlight.Show(false);
             }
 
         }
         else
         {
-
+            inventoryHighlight.Show(selectedItemGrid.BoundaryCheck(
+                positionOnGrid.x, positionOnGrid.y,
+                selectedItem.WIDTH, selectedItem.HEIGHT)
+                );
+            inventoryHighlight.SetSize(selectedItem);
+            // inventoryHighlight.SetParent(selectedItemGrid);
+            inventoryHighlight.SetPosition(selectedItemGrid, selectedItem, positionOnGrid.x, positionOnGrid.y);
         }
     }
 
@@ -98,8 +166,8 @@ public class InventoryController : MonoBehaviour
         Vector2 position = Input.mousePosition;
         if (selectedItem != null)
         {
-            position.x -= (selectedItem.itemData.width - 1) * ItemGrid.tileSizeWidth / 2;
-            position.y += (selectedItem.itemData.height - 1) * ItemGrid.tileSizeHeight / 2;
+            position.x -= (selectedItem.WIDTH - 1) * ItemGrid.tileSizeWidth / 2;
+            position.y += (selectedItem.HEIGHT - 1) * ItemGrid.tileSizeHeight / 2;
         }
 
         return selectedItemGrid.GetTileGridPosition(position);
@@ -116,6 +184,7 @@ public class InventoryController : MonoBehaviour
                 selectedItem = overlapItem;
                 overlapItem = null;
                 rectTransform = selectedItem.GetComponent<RectTransform>();
+                rectTransform.SetAsLastSibling();
             }
         }
     }
