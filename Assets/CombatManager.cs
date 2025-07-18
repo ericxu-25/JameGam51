@@ -1,5 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine.UI;
+using TMPro;
 
 public class CombatManager : MonoBehaviour
 {
@@ -18,9 +20,16 @@ public class CombatManager : MonoBehaviour
 
     private List<InventoryItem> activeWeapons = new();
     private bool BattleMode = false;
+    public Button battleButton;
+    public Button rewardButton;
 
-    private void BattleStart()
+    public void BattleStart()
     {
+        //turn off the button
+        battleButton.gameObject.SetActive(false);
+
+        //set Player stats
+        playerStats.HealFull();
         // Get all unique weapons from the grid
         var items = playerGrid.GetAllInventoryItems();
         foreach (var item in items)
@@ -35,7 +44,9 @@ public class CombatManager : MonoBehaviour
         //Set Enemy Stats
         enemyStats.SetMaxHP(200);
         enemyStats.SetBaseDamage(10);
-
+        BattleMode = true;
+        enemyStats.Died.AddListener(OnEnemyDeath);
+        playerStats.Died.AddListener(OnPlayerDeath);
 
     }
 
@@ -69,25 +80,32 @@ public class CombatManager : MonoBehaviour
         }
 
 
-        if (Input.GetKeyDown(KeyCode.B))
-        {
-            BattleStart();
-            BattleMode = true;
-            enemyStats.Died.AddListener(OnEnemyDeath);
-            playerStats.Died.AddListener(OnPlayerDeath);
-        }
+        // if (Input.GetKeyDown(KeyCode.B))
+        // {
+        //     BattleStart();
+
+        // }
     }
 
     private void OnEnemyDeath()
     {
         BattleMode = false;
         Debug.Log("Enemy died.");
+        rewardButton.gameObject.SetActive(true);
+
     }
 
     private void OnPlayerDeath()
     {
         BattleMode = false;
-         Debug.Log("Player died.");
+        Debug.Log("Player died.");
+        battleButton.GetComponentInChildren<TextMeshProUGUI>().text = "Try Again!";
+        battleButton.gameObject.SetActive(true);
+    }
+
+    public void rewardClaimed()
+    {
+        rewardButton.gameObject.SetActive(false);
     }
 
 }

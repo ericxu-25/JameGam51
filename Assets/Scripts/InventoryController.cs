@@ -135,7 +135,7 @@ public class InventoryController : MonoBehaviour
         }
     }
 
-    private void CreateRandomItem()
+    public void CreateRandomItem()
     {
         InventoryItem inventoryItem = Instantiate(itemPrefab).GetComponent<InventoryItem>();
         selectedItem = inventoryItem;
@@ -184,6 +184,7 @@ public class InventoryController : MonoBehaviour
                 selectedItem = overlapItem;
                 overlapItem = null;
                 rectTransform = selectedItem.GetComponent<RectTransform>();
+                // rectTransform.SetParent(canvasTransform);
                 rectTransform.SetAsLastSibling();
             }
         }

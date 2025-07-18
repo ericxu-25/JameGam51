@@ -227,7 +227,7 @@ public class ItemGrid : MonoBehaviour
 
         return null;
     }
-    
+
     public List<InventoryItem> GetAllInventoryItems()
     {
         List<InventoryItem> items = new();
@@ -250,5 +250,49 @@ public class ItemGrid : MonoBehaviour
         return items;
     }
 
+    public bool TryExpandGrid(int additionalWidth, int additionalHeight, int maxWidth = 10, int maxHeight = 10)
+    {
+        int newWidth = gridSizeWidth + additionalWidth;
+        int newHeight = gridSizeHeight + additionalHeight;
 
+        if (newWidth <= 0 || newHeight <= 0 || newWidth > maxWidth || newHeight > maxHeight)
+        {
+            Debug.LogWarning($"Invalid grid size: {newWidth}x{newHeight}");
+            return false;
+        }
+
+        ExpandGrid(additionalWidth, additionalHeight);
+        return true;
+    }
+
+    public void ExpandGrid(int additionalWidth, int additionalHeight)
+    {
+        int newWidth = gridSizeWidth + additionalWidth;
+        int newHeight = gridSizeHeight + additionalHeight;
+
+        // Create a new larger grid
+        InventoryItem[,] newInventoryItemSlot = new InventoryItem[newWidth, newHeight];
+
+        // Copy existing items to the new grid
+        for (int x = 0; x < gridSizeWidth; x++)
+        {
+            for (int y = 0; y < gridSizeHeight; y++)
+            {
+                newInventoryItemSlot[x, y] = inventoryItemSlot[x, y];
+            }
+        }
+
+        // Update references
+        inventoryItemSlot = newInventoryItemSlot;
+        gridSizeWidth = newWidth;
+        gridSizeHeight = newHeight;
+
+        // Resize the UI
+        rectTransform.sizeDelta = new Vector2(
+            newWidth * tileSizeWidth,
+            newHeight * tileSizeHeight
+        );
+
+        Debug.Log($"Grid expanded to {newWidth}x{newHeight}");
+    }
 }
