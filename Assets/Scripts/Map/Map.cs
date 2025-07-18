@@ -5,52 +5,57 @@ using Globals;
 namespace Map
 {
     /// <summary>
+    /// Represents a single set of paths of a map
+    /// </summary>
+    public struct MapSegment {
+        public List<List<MapNode>> paths;
+        public MapNode start;
+        public List<MapNode> ends;
+        public MapDefinition definition;
+        public int seed;
+    }
+
+    /// <summary>
     /// Script that manages the creation and storage of path nodes
     /// </summary>
     [RequireComponent(typeof(RectTransform))]
     public class Map : MonoBehaviour
     {
         [SerializeField, Tooltip("Definitions for generating the map. If multiple definitions are used, then each generated definition will be chained together")]
-        public MapDefinition MapParameters;
+        private MapDefinition[] MapDefinitions;
 
-        private List<List<MapNode>> _paths = null;
+        [SerializeField, Tooltip("Horizontal and vertical padding to use around the borders of the map when generating nodes.")]
+        private Vector2 padding = new Vector2(20f, 20f);
 
-        private MapNode _start = null;
-        private List<MapNode> _ends = null;
+        private List<MapSegment> maps = null;
+
         private RectTransform rectTransform = null;
+        private Rect baseRect;
 
-        [SerializeField, Tooltip("Random seed used in map generation. Set to 0 to generate a new one")]
-        private int seed = 0;
-
-        [SerializeField, Tooltip("Whether to use the preset seed or not")]
-        private bool useSeed = false;
-        public int Seed { get { return seed; } set { seed = value; } }
+        private bool _started = false;
 
         private void OnValidate()
         {
-            if (_paths == null)
+            if (maps == null)
             {
-                _paths = new List<List<MapNode>>();
+                maps = new List<MapSegment>();
             }
-            if (!MapParameters)
+            if (MapDefinitions == null || MapDefinitions.Length == 0)
             {
                 Debug.LogError("Must have a valid MapDefinition for map generation");
             }
-            else if (MapParameters.NodesToGenerate.Length <= 0)
-            {
-                Debug.LogError("Must have a defined set of nodes to generate in MapDefinition");
-            }
             rectTransform = GetComponent<RectTransform>();
-            if (seed == 0)
-            {
-                seed = Random.Range(0, Mathf.Abs((int)System.DateTime.Now.Ticks));
-            }
         }
 
         // Start is called once before the first execution of Update after the MonoBehaviour is created
         void Start()
         {
             OnValidate();
+            baseRect = new Rect(rectTransform.rect);
+            foreach (MapDefinition definition in MapDefinitions) {
+                definition.PrintDebug();
+            }
+            _started = true;
         }
 
         /// <summary>
@@ -60,7 +65,6 @@ namespace Map
         public void DestroyMap(bool immediate = false)
         {
             Debug.Log("resetting map!");
-            _paths.Clear();
             foreach (Transform t in this.transform)
             {
                 if (immediate)
@@ -79,62 +83,133 @@ namespace Map
         [ContextMenu("DestroyMap")]
         public void DestroyMap()
         {
+            if (!_started)
+            {
+                Debug.LogError("Map modification is not allowed in editor");
+                return;
+            }
+            maps.Clear();
             DestroyMap(immediate: false);
         }
 
         /// <summary>
-        /// Takes all the generated map nodes and displays them left to right
+        /// Displays all the generated map segments
         /// </summary>
         [ContextMenu("DisplayMap")]
         public void DisplayMap()
         {
-            if (_paths.Count <= 0)
+            if (!_started)
             {
-                Debug.LogError("Cannot display a map that does not exist yet!");
+                Debug.LogError("Map modification is not allowed in editor");
+                return;
+            }
+            if (maps.Count == 0) {
+                Debug.LogError("Cannot display map when no segment has been generated yet");
+                return;
+            }
+            // adjust the full bounds (extending up/down and right) to be able to fit all our maps
+            Rect fullBounds = new Rect(baseRect);
+            Debug.Log("full bounds.size: " + fullBounds.size);
+            float totalMapWidth = 0;
+            float totalMapHeight = 0;
+            foreach (MapDefinition definition in MapDefinitions)
+            {
+                totalMapWidth += definition.displayWidth;
+                totalMapHeight = Mathf.Max(definition.displayHeight, totalMapHeight);
+            }
+            fullBounds.width *= totalMapWidth;
+            fullBounds.y += fullBounds.height * (totalMapHeight - 1f) / 2;
+            fullBounds.height *= totalMapHeight;
+            // adjust our actual transform
+            rectTransform.anchorMin = new Vector2(totalMapWidth/2, totalMapHeight/2);
+            rectTransform.anchorMax = rectTransform.anchorMin;
+            rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, fullBounds.width);
+            rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, fullBounds.height);
+            // recalculate bounding box with padding
+            fullBounds = rectTransform.rect;
+            fullBounds.width -= padding.x * 2;
+            fullBounds.x += padding.x; 
+            fullBounds.height -= padding.y * 2;
+            fullBounds.y += padding.y;
+            // Display each map segment from right to left
+            float currentXMin = fullBounds.xMax;
+            float stepSize = fullBounds.width / totalMapWidth;
+            for (int i = maps.Count - 1; i >= 0; --i) {
+                Rect bounds = new Rect(fullBounds);
+                bounds.xMax = currentXMin;
+                currentXMin -= stepSize * maps[i].definition.displayWidth;
+                bounds.xMin = currentXMin;
+                bounds.height *= maps[i].definition.displayHeight;
+                bounds.y = fullBounds.y;
+                // add an offset to prevent overlap between start and end nodes
+                if (i != 0) bounds.xMin += bounds.width / (2 + maps[i].definition.maxPathLength);
+                Debug.Log("bounds for of map segment " + i.ToString() + " " + maps[i].definition.name + ": " + bounds.size);
+                DisplayMapSegment(maps[i], bounds);
+                // Connect the next map segment to this one 
+                if (i == maps.Count - 1) continue;
+                List<MapNode> startNode = new List<MapNode>();
+                startNode.Add(maps[i+1].start);
+                ConnectNodes(maps[i].ends, startNode, null, maps[i].definition);
+            }
+        }
+
+        /// <summary>
+        /// Takes all the generated map nodes in a segment and displays them in a defined bounds
+        /// </summary>
+        public void DisplayMapSegment(MapSegment map, Rect bounds) { 
+            if (map.paths.Count <= 0)
+            {
+                Debug.LogError("Cannot display a map segment with no paths!");
                 return;
             }
             // calculate relevant positioning and noise variables
-            float verticalGap = 1f / (_paths.Count + 1);
+            float verticalGap = 1f / (map.paths.Count + 1);
             // noise stuff
-            if(useSeed) Random.InitState(seed);
+            Random.InitState(map.seed);
             Vector2 noiseOffset = new Vector2(Random.Range(0, 1000), Random.Range(0, 1000));
             Vector2 maxNoiseDrift = Vector2.zero;
             // positioning
-            Rect bounds = rectTransform.rect;
-            Debug.Log("Displaying map with size: " + bounds.size.ToString() + " and " + _paths.Count.ToString() + " paths");
+            Debug.Log("Displaying map with size: " + bounds.size.ToString() + " and " + map.paths.Count.ToString() + " paths");
             Debug.Log("Map bottom left corner: " + bounds.min.ToString());
             // position each node on each path on the correct position
-            for (int i = 0; i < _paths.Count; ++i)
+            for (int i = 0; i < map.paths.Count; ++i)
             {
-                List<MapNode> path = _paths[i];
+                List<MapNode> path = map.paths[i];
                 if (path.Count == 0) continue;
                 // only draw start and end nodes on the middle path
-                bool middlePath = (i == Mathf.FloorToInt(_paths.Count / 2));
-                int pathEnd = path.Count - (middlePath ? 0 : _ends.Count);
-                if (middlePath) Debug.Log("Generating middle path");
+                bool middlePath = (i == Mathf.FloorToInt(map.paths.Count / 2));
+                int pathEnd = path.Count - (middlePath ? 0 : map.ends.Count);
+                // if (middlePath) Debug.Log("Generating middle path");
                 int sliceIndex = 0;
                 int sliceSubIndex = 0;
                 List<MapNode> slice = new List<MapNode>();
                 MapNode node = path[0];
                 for (int j = middlePath ? 0 : 1; j <= pathEnd; ++j)
                 {
-                    if (j != pathEnd)
+                    bool processSlice = false;
+                    // use extra index to ensure final node/slice gets tracked
+                    if (j == pathEnd)
+                    {
+                        processSlice = true;
+                    }
+                    else
                     {
                         node = path[j];
-                        Debug.Log(j.ToString() + " At index: " + node.index.ToString() + (node.IsBonus? ("B" + node.bonus.ToString()) : "") + " which is " + path[j].name);
+                        // Debug.Log(j.ToString() + " At index: " + node.index.ToString() + (node.IsBonus? ("B" + node.bonus.ToString()) : "") + " which is " + path[j].name);
                         // group nodes together into slices based on their index and subindex (bonus level)
                         if (node.index == sliceIndex && node.bonus == sliceSubIndex)
                         {
                             slice.Add(node);
-                            if (j != pathEnd - 1) continue; // don't skip if last node
+                            processSlice = false;
                         }
                         else
                         {
                             sliceIndex = node.index;
                             sliceSubIndex = node.bonus;
+                            processSlice = true;
                         }
                     }
-                    // reached the end or a node in a different slice
+                    if (!processSlice) continue;
                     if (slice.Count == 0) {
                         // if nothing in the slice, just continue
                         slice.Add(node);
@@ -148,22 +223,24 @@ namespace Map
                         MapNode sliceNode = slice[k];
                         float verticalPosition = verticalGap * (i + 0.5f) + splitVerticalGap * k;
                         sliceNode.transform.localPosition = bounds.min + new Vector2(sliceNode.distance * bounds.width, verticalPosition * bounds.height);
-                        Vector2 noisePosition = noiseOffset + Helpers.Vec3ToVec2(sliceNode.transform.localPosition);
+                        // don't apply noise to the first node of each path
+                        if (middlePath && path[0] == sliceNode) continue;
+                        // appply perlin noise to our nodes
+                        Vector2 noisePosition = noiseOffset + map.definition.noiseScale * new Vector2(sliceNode.distance, verticalPosition);
                         float noiseShift = Mathf.PerlinNoise(noisePosition.x, noisePosition.y);
-                        noisePosition = MapParameters.nodeNoisiness.Evaluate(sliceNode.distance) * noiseShift * noiseShift * maxNoiseDrift;
+                        noisePosition = map.definition.noiseMagnitude.Evaluate(sliceNode.distance) * noiseShift * maxNoiseDrift;
                         noisePosition = Vector2.Scale(noisePosition, bounds.size);
                         noisePosition = Helpers.Vec3ToVec2(sliceNode.transform.localPosition) + noisePosition;
                         sliceNode.transform.localPosition = new Vector3(noisePosition.x, noisePosition.y, sliceNode.transform.localPosition.z);
-                        Debug.Log(sliceNode.name + " position: " + sliceNode.transform.localPosition);
+                        // Debug.Log(sliceNode.name + " position: " + sliceNode.transform.localPosition);
                     }
                     // update the next slice
                     slice.Clear();
                     if(j != pathEnd) slice.Add(node);
                 }
             }
-
             // update each node's connecting lines
-            foreach (List<MapNode> path in _paths)
+            foreach (List<MapNode> path in map.paths)
             {
                 foreach (MapNode node in path)
                 {
@@ -179,41 +256,60 @@ namespace Map
         [ContextMenu("GenerateMap")]
         public void GenerateMap()
         {
-            if(useSeed) Random.InitState(seed);
-            Debug.Log("Creating map with seed of " + seed.ToString());
+            if (!_started)
+            {
+                Debug.LogError("Map modification is not allowed in editor");
+                return;
+            }
             // clear the map
             DestroyMap();
+            // generate each map segment
+            foreach (MapDefinition definition in MapDefinitions) {
+                maps.Add(GenerateMapSegment(definition));
+            }
+        }
+
+        /// <summary>
+        /// Generate a MapSegment from a Map Definitioon
+        /// </summary>
+        public MapSegment GenerateMapSegment(MapDefinition definition) {
+            int seed;
+            if (definition.useSeed) seed = definition.seed;
+            else seed = Random.Range(0, (int)System.DateTime.Now.Ticks);
+            Random.InitState(seed);
+            Debug.Log("Creating map segment from " + definition.name + " with seed of " + seed.ToString());
             // create start and ending nodes
-            _start = MakeChildCopy(MapParameters.startingNode, prefix: "Starting");
-            _start.distance = 0f;
-            _start.index = 0;
-            _ends = new List<MapNode>();
-            foreach (MapNode endingNode in MapParameters.endingNodes)
+            MapNode start = MakeChildCopy(definition.startingNode, prefix: "Start of " + definition.name);
+            start.distance = 0f;
+            start.index = 0;
+            List<MapNode> ends = new List<MapNode>();
+            List<List<MapNode>> paths = new List<List<MapNode>>();
+            foreach (MapNode endingNode in definition.endingNodes)
             {
-                MapNode end = MakeChildCopy(endingNode, prefix: "End");
+                MapNode end = MakeChildCopy(endingNode, prefix: "End of " + definition.name);
                 end.distance = 1f;
-                end.index = MapParameters.maxPathLength + 2;
-                _ends.Add(end);
+                end.index = definition.maxPathLength + 2;
+                ends.Add(end);
             }
-            foreach (MapNode endingNode in _ends)
+            foreach (MapNode endingNode in ends)
             {
-                endingNode.neighbors = _ends;
+                endingNode.neighbors = ends;
             }
-            if (_ends.Count == 0)
+            if (ends.Count == 0)
             {
                 Debug.LogError("MapParameters lack defined ending nodes!");
             }
             // generate the nodes and the connections between them
-            for (int i = 0; i < MapParameters.totalPaths; ++i)
+            for (int i = 0; i < definition.totalPaths; ++i)
             {
-                _paths.Add(GeneratePath(_start, _ends));
+                paths.Add(GeneratePath(start, ends, definition));
             }
             // perform post generation updates for each node
             // while also tallying path info
             int totalNodes = 0;
             int totalBonusNodes = 0;
             int totalConnections = 0;
-            foreach (List<MapNode> path in _paths)
+            foreach (List<MapNode> path in paths)
             {
                 for (int j = 0; j < path.Count; ++j)
                 {
@@ -225,18 +321,25 @@ namespace Map
                 }
             }
             // remove duplicate ending nodes
-            totalNodes -= (_paths.Count - 1) * MapParameters.endingNodes.Length;
-            Debug.Log("Created " + _paths.Count.ToString()
+            totalNodes -= (paths.Count - 1) * definition.endingNodes.Length;
+            Debug.Log("Created " + paths.Count.ToString()
                 + " paths with " + totalNodes.ToString() + " nodes, "
                 + totalBonusNodes.ToString() + " bonus nodes and "
                 + totalConnections.ToString() + " connections.");
+            MapSegment newMap = new MapSegment();
+            newMap.definition = definition;
+            newMap.seed = seed;
+            newMap.paths = paths;
+            newMap.start = start;
+            newMap.ends = ends;
+            return newMap;
         }
 
         /// <summary>
         /// Generates a list of MapNode game objects based on the given map configuration for a single path
         /// </summary>
         /// <returns></returns>
-        private List<MapNode> GeneratePath(MapNode start, List<MapNode> ends)
+        private List<MapNode> GeneratePath(MapNode start, List<MapNode> ends, MapDefinition definition)
         {
             List<MapNode> path = new List<MapNode>();
             // ensure starting node is connected
@@ -244,14 +347,14 @@ namespace Map
             previousNodes.Add(start);
             path.Add(start);
             // generated the nodes for the path
-            int nodesToGenerate = Random.Range(MapParameters.minPathLength, MapParameters.maxPathLength + 1);
+            int nodesToGenerate = Random.Range(definition.minPathLength, definition.maxPathLength + 1);
             for (int i = 0; i < nodesToGenerate; ++i)
             {
                 // need to add offset for index and total nodes to account for start and ending nodes
-                GenerateNextNodesInPath(ref previousNodes, ref path, i + 1, nodesToGenerate + 2);
+                GenerateNextNodesInPath(ref previousNodes, ref path, i + 1, nodesToGenerate + 2, definition);
             }
             // connect all final nodes to the ending nodes
-            ConnectNodes(previousNodes, ends, path);
+            ConnectNodes(previousNodes, ends, path, definition);
             path.AddRange(ends);
             return path;
         }
@@ -266,30 +369,30 @@ namespace Map
         /// <param name="path"></param>
         /// <param name="index">Current index of the nodes being generated out of the total nodes to generate</param>
         /// <param name="totalNodes">Total nodes to generate</param>
-        private void GenerateNextNodesInPath(ref List<MapNode> previousNodes, ref List<MapNode> path, int index, int totalNodes)
+        private void GenerateNextNodesInPath(ref List<MapNode> previousNodes, ref List<MapNode> path, int index, int totalNodes, MapDefinition definition)
         {
             float distance = index * 1f / totalNodes;
             List<MapNode> nextNodes = new List<MapNode>();
             // determine if we are splitting the next node (e.g. creating a branch)
-            float splitChance = MapParameters.splitChance.Evaluate(distance);
+            float splitChance = definition.splitChance.Evaluate(distance);
             bool split = Random.value < splitChance;
-            int splitNodeAmount = split ? Random.Range(MapParameters.minSplitAmount, MapParameters.maxSplitAmount + 1) + 1 : 1;
+            int splitNodeAmount = split ? Random.Range(definition.minSplitAmount, definition.maxSplitAmount + 1) + 1 : 1;
             for (int j = 0; j < splitNodeAmount; ++j)
             {
                 MapNode nextNode;
                 if (j < previousNodes.Count)
                 {
-                    nextNode = GenerateNextNode(previousNodes[j], path, MapParameters.NodesToGenerate, index.ToString());
+                    nextNode = GenerateNextNode(previousNodes[j], path, definition.NodesToGenerate, index.ToString());
                 }
                 else
                 {
-                    nextNode = GenerateNextNode(ListHelpers.RandomFromList(previousNodes), path, MapParameters.NodesToGenerate, index.ToString());
+                    nextNode = GenerateNextNode(ListHelpers.RandomFromList(previousNodes), path, definition.NodesToGenerate, index.ToString());
                 }
                 // determine if we connect this node to its neighbor
-                if (nextNodes.Count > 0 && Random.value < MapParameters.splitConnectionChance.Evaluate(distance))
+                if (nextNodes.Count > 0 && Random.value < definition.splitConnectionChance.Evaluate(distance))
                 {
                     MapNode neighborNode = nextNodes[nextNodes.Count - 1];
-                    MapConnection nodeConnection = CreateConnection(neighborNode, nextNode, path);
+                    MapConnection nodeConnection = CreateConnection(neighborNode, nextNode, path, definition);
                     nextNode.ConnectTo(neighborNode, nodeConnection);
                 }
                 nextNodes.Add(nextNode);
@@ -301,11 +404,11 @@ namespace Map
                 node.index = index;
             }
             path.AddRange(nextNodes);
-            ConnectNodes(previousNodes, nextNodes, path);
+            ConnectNodes(previousNodes, nextNodes, path, definition);
             previousNodes = nextNodes;
 
             // handle splitting again from the split nodes which adds additional intermediate nodes
-            if (split) { SplitBonusNodesInPath(ref previousNodes, ref path, index, totalNodes); }
+            if (split) { SplitBonusNodesInPath(ref previousNodes, ref path, index, totalNodes, definition); }
         }
 
         /// <summary>
@@ -314,7 +417,7 @@ namespace Map
         /// <param name="previousNodes"></param>
         /// <param name="index"></param>
         /// <param name="totalNodes"></param>
-        private void SplitBonusNodesInPath(ref List<MapNode> previousNodes, ref List<MapNode> path, int index, int totalNodes)
+        private void SplitBonusNodesInPath(ref List<MapNode> previousNodes, ref List<MapNode> path, int index, int totalNodes, MapDefinition definition)
         {
             int splitDepth = 1;
             List<MapNode> generatedNodes = new List<MapNode>(previousNodes);
@@ -322,33 +425,34 @@ namespace Map
             List<MapNode> nodeEndings = new List<MapNode>();
 
             float stepSize = 1f / totalNodes;
-            float splitChance = MapParameters.splitChance.Evaluate(index * stepSize);
-            while (splitDepth <= MapParameters.maxSplitDepth)
+            float splitChance = definition.splitChance.Evaluate(index * stepSize);
+            while (splitDepth <= definition.maxSplitDepth)
             {
                 int totalSplits = 0;
-                splitChance *= MapParameters.splitDecay;
+                splitChance *= definition.splitDecay;
                 // attempt to split each of the following nodes
+                newlyGeneratedNodes.Clear();
                 foreach (MapNode node in generatedNodes)
                 {
                     bool splitAgain;
-                    if (totalSplits >= MapParameters.maxBonusSplits) { splitAgain = false; }
+                    if (totalSplits >= definition.maxBonusSplits) { splitAgain = false; }
                     else { splitAgain = Random.value < splitChance; }
                     if (splitAgain)
                     {
                         ++totalSplits;
-                        float distance = (index + ((float)splitDepth) / (MapParameters.maxSplitDepth + 1)) * stepSize;
+                        float distance = (index + ((float)splitDepth) / (definition.maxSplitDepth + 1)) * stepSize;
                         List<MapNode> splitAgainNodes = new List<MapNode>();
-                        int splitNodeAmount = splitAgain ? Random.Range(MapParameters.minSplitAmount, MapParameters.maxSplitAmount + 1) + 1 : 1;
+                        int splitNodeAmount = splitAgain ? Random.Range(definition.minSplitAmount, definition.maxSplitAmount + 1) + 1 : 1;
                         for (int k = 0; k < splitNodeAmount; ++k)
                         {
                             MapNodePolicy[] generationPolicy;
-                            if (MapParameters.BonusNodesToGenerate == null || MapParameters.BonusNodesToGenerate.Length == 0)
+                            if (definition.BonusNodesToGenerate == null || definition.BonusNodesToGenerate.Length == 0)
                             {
-                                generationPolicy = MapParameters.NodesToGenerate;
+                                generationPolicy = definition.NodesToGenerate;
                             }
                             else
                             {
-                                generationPolicy = MapParameters.BonusNodesToGenerate;
+                                generationPolicy = definition.BonusNodesToGenerate;
                             }
                             splitAgainNodes.Add(GenerateNextNode(node, path, generationPolicy, index.ToString() + "B" + splitDepth.ToString()));
                         }
@@ -358,7 +462,7 @@ namespace Map
                             bonusNode.distance = distance;
                             bonusNode.neighbors = splitAgainNodes;
                             bonusNode.index = index;
-                            MapConnection nodeConnection = CreateConnection(node, bonusNode, path);
+                            MapConnection nodeConnection = CreateConnection(node, bonusNode, path, definition);
                             node.ConnectTo(bonusNode, nodeConnection);
                         }
                         newlyGeneratedNodes.AddRange(splitAgainNodes);
@@ -370,7 +474,7 @@ namespace Map
                     }
                 }
                 ++splitDepth;
-                generatedNodes = newlyGeneratedNodes;
+                generatedNodes = new List<MapNode>(newlyGeneratedNodes);
                 if (generatedNodes.Count == 0) break;
             }
             nodeEndings.AddRange(newlyGeneratedNodes);
@@ -427,7 +531,7 @@ namespace Map
         /// <param name="previousNodes"></param>
         /// <param name="currentNodes"></param>
         /// <param name="path"></param>
-        private void ConnectNodes(List<MapNode> previousNodes, List<MapNode> currentNodes, List<MapNode> path)
+        private void ConnectNodes(List<MapNode> previousNodes, List<MapNode> currentNodes, List<MapNode> path, MapDefinition definition)
         {
             if (previousNodes == null || previousNodes.Count == 0) return;
             if (currentNodes == null || currentNodes.Count == 0)
@@ -459,7 +563,7 @@ namespace Map
                     // if the previous node already connects to a neighbor we can ignore it with a certain probability (since that neighbor will connect back eventually)
                     if (previousNode.paths != null && previousNode.paths.Count > 0)
                     {
-                        if (Random.value < MapParameters.detourChance.Evaluate(previousNode.distance))
+                        if (Random.value < definition.detourChance.Evaluate(previousNode.distance))
                         {
                             detouredPreviousNodes.Add(previousNode);
                             continue;
@@ -479,7 +583,7 @@ namespace Map
                     }
                 }
                 undetouredPreviousNodes.Add(previousNode);
-                MapConnection nodeConnection = CreateConnection(previousNode, nextNode, path);
+                MapConnection nodeConnection = CreateConnection(previousNode, nextNode, path, definition);
                 previousNode.ConnectTo(nextNode, nodeConnection);
             }
             // if there are remaining nodes to connect to, then we simply connect a random valid previous to each remaining current node
@@ -497,7 +601,6 @@ namespace Map
                     {
                         // if there are no valid nodes in the undetoured set, then we will have to check from the detoured set
                         validNodes = GetValidNodesFrom(detouredPreviousNodes, node, path);
-                        prevNode = ListHelpers.RandomFromList(validNodes);
                         // if there are no valid nodes in that set too, then we choose a random, preferring the undetoured set
                         if (validNodes.Count == 0)
                         {
@@ -511,7 +614,7 @@ namespace Map
                             prevNode = ListHelpers.RandomFromList(validNodes);
                         }
                     }
-                    MapConnection nodeConnection = CreateConnection(prevNode, node, path);
+                    MapConnection nodeConnection = CreateConnection(prevNode, node, path, definition);
                     prevNode.ConnectTo(node, nodeConnection);
                 }
             }
@@ -523,13 +626,30 @@ namespace Map
         /// <param name="previousNode"></param>
         /// <param name="currentNode"></param>
         /// <returns></returns>
-        private MapConnection CreateConnection(MapNode previousNode, MapNode currentNode, List<MapNode> path)
+        private MapConnection CreateConnection(MapNode previousNode, MapNode currentNode, List<MapNode> path, MapDefinition definition)
         {
-            MapConnection nodeConnection = MakeChildCopy(MapParameters.BaseNodeConnector);
+            MapConnection nodeConnection = MakeChildCopy(definition.BaseNodeConnector);
             // an invalid connection should rarely happen, but if it does we make the player say something to acknowledge it
             if (!currentNode.IsValid(previousNode, path))
             {
                 nodeConnection.TravelMessages.Add("I don't remember this path being here...");
+            }
+            // here we add any hidden nodes to the connection
+            if (definition.HiddenNodesToGenerate.Length > 0 && Random.value < definition.HiddenNodeChance.Evaluate((previousNode.distance + currentNode.distance) / 2)) {
+                if(nodeConnection.HiddenNode == null) { 
+                    nodeConnection.HiddenNode = new List<MapNode>();
+                }
+                MapNode hiddenNode = ListHelpers.WeightedRandomFromList(definition.HiddenNodesToGenerate, (MapNodePolicy p) => { return p.weight; }).node;
+                if (hiddenNode != default(MapNode))
+                {
+                    string prefix = "Hidden " + previousNode.name;
+                    hiddenNode = MakeChildCopy(hiddenNode, prefix);
+                    hiddenNode.gameObject.SetActive(false);
+                    hiddenNode.bonus = currentNode.bonus;
+                    hiddenNode.index = currentNode.index;
+                    hiddenNode.hidden = true;
+                    nodeConnection.HiddenNode.Add(hiddenNode);
+                }
             }
             return nodeConnection;
         }
@@ -555,7 +675,7 @@ namespace Map
         }
 
         /// <summary>
-        /// Returns the set of possible originating nodes from a set given the current node and previous path
+        /// Returns the set of valid possible originating nodes from a set given the current node and previous path
         /// </summary>
         /// <param name="currentNodes"></param>
         /// <param name="nextNode"></param>

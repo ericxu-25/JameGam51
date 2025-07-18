@@ -23,9 +23,10 @@ namespace Map
         public int maxPathLength = 5;
         [SerializeField, Tooltip("Total amount of paths to generate")]
         public int totalPaths = 3;
-
-        [SerializeField, Tooltip("Base connection to use to connect each node")]
-        public MapConnection BaseNodeConnector;
+        [SerializeField, Tooltip("Random seed used in map generation. Set to 0 to generate a random seed")]
+        public int seed = 0;
+        [SerializeField, Tooltip("Whether to use the preset seed or not")]
+        public bool useSeed = false;
 
         [Header("Path Splitting")]
         [SerializeField, Tooltip("Chance for a node to split based on distance")]
@@ -65,6 +66,9 @@ namespace Map
         [SerializeField, Tooltip("Chance a valid hidden node will generate on a path based on distance")]
         public AnimationCurve HiddenNodeChance;
 
+        [SerializeField, Tooltip("Base connection to use to connect each node")]
+        public MapConnection BaseNodeConnector;
+
         [SerializeField, Tooltip("Node to start from")]
         public MapNode startingNode;
 
@@ -73,12 +77,21 @@ namespace Map
 
         [Header("Aesthetic Details")]
         [SerializeField, Tooltip("How much noise to apply to node position based on distance")]
-        public AnimationCurve nodeNoisiness;
+        public AnimationCurve noiseMagnitude;
+
+        [SerializeField, Tooltip("Zoom on the base noise map to use (higher values result in less local connectivity)")]
+        public float noiseScale = 1f;
+
+
+        [SerializeField, Tooltip("How much of the base map width the map is expected to take up.")]
+        public float displayWidth = 1f;
+
+        [SerializeField, Tooltip("How much of the base map height the map is expected to take up.")]
+        public float displayHeight = 1f;
 
         private void OnValidate()
         {
             minPathLength = Mathf.Abs(minPathLength);
-            if (minPathLength < 1) minPathLength = 1;
             maxPathLength = Mathf.Clamp(maxPathLength, minPathLength, int.MaxValue);
             totalPaths = Mathf.Abs(totalPaths);
             if (totalPaths < 1) totalPaths = 1;
@@ -87,6 +100,24 @@ namespace Map
             splitDecay = Mathf.Clamp(splitDecay, 0f, Mathf.Infinity);
             maxSplitDepth = Mathf.Clamp(maxSplitDepth, 0, 10);
             maxBonusSplits = Mathf.Clamp(maxBonusSplits, 1, int.MaxValue);
+            if (seed == 0)
+            {
+                seed = Random.Range(0, Mathf.Abs((int)System.DateTime.Now.Ticks));
+            }
+            displayWidth = Mathf.Clamp(displayWidth, 0.1f, int.MaxValue);
+            displayHeight = Mathf.Clamp(displayHeight, 0.1f, int.MaxValue);
+        }
+
+        public void PrintDebug() {
+            if (NodesToGenerate == null || NodesToGenerate.Length == 0) {
+                Debug.LogError(this.name + " Map Definition has no nodes to generate!");
+            }
+            if (BonusNodesToGenerate == null || BonusNodesToGenerate.Length == 0) {
+                Debug.Log(this.name + " Map Definition has no bonus node definition, will use default node generation");
+            }
+            if (HiddenNodesToGenerate == null || HiddenNodesToGenerate.Length == 0) {
+                Debug.Log(this.name + " Map Definition has no HiddenNodesToGenerate");
+            }
         }
 
     }

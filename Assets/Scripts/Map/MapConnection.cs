@@ -14,8 +14,8 @@ namespace Map
         [HideInInspector]
         public LineRenderer line;
 
-        [Tooltip("Optional encounter the player will have while traveling on the path")]
-        public MapNode HiddenNode = null;
+        [Tooltip("Optional encounters the player will have while traveling on the path")]
+        public List<MapNode> HiddenNode = null;
 
         [Tooltip("Optional messages the player might say while traveling on this path")]
         public List<string> TravelMessages;

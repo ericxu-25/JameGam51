@@ -83,6 +83,12 @@ namespace Map
         public bool IsBonus { get { return bonus > 0; } }
 
         /// <summary>
+        /// If this is a hidden node
+        /// </summary>
+        [HideInInspector]
+        public bool hidden = false;
+
+        /// <summary>
         /// Returns if this node is a valid addition as the next node to the current path
         /// </summary>
         /// <param name="previousNode"></param>
