@@ -16,42 +16,45 @@ namespace Map
     }
 
     /// <summary>
-    /// Script that manages the creation and storage of path nodes
+    /// Script that manages the creation, storage, and display of path nodes.
     /// </summary>
-    [RequireComponent(typeof(RectTransform))]
     public class Map : MonoBehaviour
     {
         [SerializeField, Tooltip("Definitions for generating the map. If multiple definitions are used, then each generated definition will be chained together")]
         private MapDefinition[] MapDefinitions;
 
+        [Header("Map Display")]
         [SerializeField, Tooltip("Horizontal and vertical padding to use around the borders of the map when generating nodes.")]
-        private Vector2 padding = new Vector2(20f, 20f);
+        private Vector2 padding = new Vector2(40f, 20f);
+
+        [SerializeField, Tooltip("Canvas to display the map on and parent nodes to when displaying")]
+        private RectTransform mapRoot = null;
 
         private List<MapSegment> maps = null;
-
-        private RectTransform rectTransform = null;
+        private HashSet<MapNode> nodes = null;
+        private GameObject _root = null;
         private Rect baseRect;
-
         private bool _started = false;
-
-        private void OnValidate()
-        {
-            if (maps == null)
-            {
-                maps = new List<MapSegment>();
-            }
-            if (MapDefinitions == null || MapDefinitions.Length == 0)
-            {
-                Debug.LogError("Must have a valid MapDefinition for map generation");
-            }
-            rectTransform = GetComponent<RectTransform>();
-        }
 
         // Start is called once before the first execution of Update after the MonoBehaviour is created
         void Start()
         {
-            OnValidate();
-            baseRect = new Rect(rectTransform.rect);
+            maps = new List<MapSegment>();
+            nodes = new HashSet<MapNode>();
+            if (MapDefinitions == null || MapDefinitions.Length == 0)
+            {
+                Debug.LogError("Must have a valid MapDefinition for map generation");
+                return;
+            }
+            if (mapRoot == null) {
+                Debug.LogError("Map must have a valid RectTransform to draw on!");
+                return;
+            }
+            // create a container for the nodes on this map
+            _root = new GameObject(this.name + " Node Container");
+            _root.transform.SetParent(this.transform, false);
+            _root.SetActive(false);
+            baseRect = new Rect(mapRoot.rect);
             foreach (MapDefinition definition in MapDefinitions) {
                 definition.PrintDebug();
             }
@@ -65,15 +68,17 @@ namespace Map
         public void DestroyMap(bool immediate = false)
         {
             Debug.Log("resetting map!");
-            foreach (Transform t in this.transform)
+            foreach (MapNode node in nodes)
             {
                 if (immediate)
                 {
-                    DestroyImmediate(t.gameObject, false);
+                    DestroyImmediate(node.gameObject, false);
                     continue;
                 }
-                Destroy(t.gameObject);
+                Destroy(node.gameObject);
             }
+            maps.Clear();
+            nodes.Clear();
             System.GC.Collect();
         }
 
@@ -88,12 +93,11 @@ namespace Map
                 Debug.LogError("Map modification is not allowed in editor");
                 return;
             }
-            maps.Clear();
             DestroyMap(immediate: false);
         }
 
         /// <summary>
-        /// Displays all the generated map segments
+        /// Displays all the generated map segments by parenting them to the map root and positioning them
         /// </summary>
         [ContextMenu("DisplayMap")]
         public void DisplayMap()
@@ -121,14 +125,14 @@ namespace Map
             fullBounds.y += fullBounds.height * (totalMapHeight - 1f) / 2;
             fullBounds.height *= totalMapHeight;
             // adjust our actual transform
-            rectTransform.anchorMin = new Vector2(totalMapWidth/2, totalMapHeight/2);
-            rectTransform.anchorMax = rectTransform.anchorMin;
-            rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, fullBounds.width);
-            rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, fullBounds.height);
+            mapRoot.anchorMin = new Vector2(totalMapWidth / 2, totalMapHeight / 2);
+            mapRoot.anchorMax = mapRoot.anchorMin;
+            mapRoot.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, fullBounds.width);
+            mapRoot.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, fullBounds.height);
             // recalculate bounding box with padding
-            fullBounds = rectTransform.rect;
+            fullBounds = mapRoot.rect;
             fullBounds.width -= padding.x * 2;
-            fullBounds.x += padding.x; 
+            fullBounds.x += padding.x;
             fullBounds.height -= padding.y * 2;
             fullBounds.y += padding.y;
             // Display each map segment from right to left
@@ -148,8 +152,21 @@ namespace Map
                 // Connect the next map segment to this one 
                 if (i == maps.Count - 1) continue;
                 List<MapNode> startNode = new List<MapNode>();
-                startNode.Add(maps[i+1].start);
+                startNode.Add(maps[i + 1].start);
                 ConnectNodes(maps[i].ends, startNode, null, maps[i].definition);
+            }
+        }
+
+        /// <summary>
+        /// Hides the map's nodes without destroying them
+        /// </summary>
+        public void HideMap() {
+            if (maps.Count == 0) {
+                Debug.LogWarning("Attempted to hide a map that is empty");
+                return;
+            }
+            foreach (MapNode node in nodes) {
+                node.gameObject.SetActive(false);
             }
         }
 
@@ -162,6 +179,9 @@ namespace Map
                 Debug.LogError("Cannot display a map segment with no paths!");
                 return;
             }
+            // parent the root container for the nodes to the mapRoot
+            _root.transform.SetParent(mapRoot, false);
+            _root.SetActive(true);
             // calculate relevant positioning and noise variables
             float verticalGap = 1f / (map.paths.Count + 1);
             // noise stuff
@@ -186,7 +206,7 @@ namespace Map
                 MapNode node = path[0];
                 for (int j = middlePath ? 0 : 1; j <= pathEnd; ++j)
                 {
-                    bool processSlice = false;
+                    bool processSlice;
                     // use extra index to ensure final node/slice gets tracked
                     if (j == pathEnd)
                     {
@@ -261,11 +281,17 @@ namespace Map
                 Debug.LogError("Map modification is not allowed in editor");
                 return;
             }
-            // clear the map
+            // clear any previous maps
             DestroyMap();
             // generate each map segment
             foreach (MapDefinition definition in MapDefinitions) {
-                maps.Add(GenerateMapSegment(definition));
+                MapSegment newMapSegment = GenerateMapSegment(definition);
+                maps.Add(newMapSegment);
+                foreach (List<MapNode> path in newMapSegment.paths) {
+                    foreach (MapNode node in path) {
+                        nodes.Add(node);
+                    }
+                }
             }
         }
 
@@ -515,7 +541,7 @@ namespace Map
         /// <returns></returns>
         private T MakeChildCopy<T>(T original, string prefix = null) where T : MonoBehaviour
         {
-            T copy = Instantiate(original, this.transform);
+            T copy = Instantiate(original, _root.transform);
             if (prefix != null)
             {
                 copy.name = prefix + " " + original.name;
