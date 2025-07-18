@@ -28,6 +28,12 @@ public class UIInteractionScript : MonoBehaviour
         GameSceneManager.Instance.NextScene(_nextScene);
     }
 
+    // public void PastScene()
+    // {
+    //     GameSceneManager.Instance.NextScene(_);
+    // }
+
+
     public void ReturnToMenu()
     {
         GameSceneManager.Instance.ReturnToMainMenu();
