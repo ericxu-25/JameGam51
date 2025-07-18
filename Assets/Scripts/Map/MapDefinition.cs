@@ -28,7 +28,7 @@ namespace Map
         public MapConnection BaseNodeConnector;
 
         [Header("Path Splitting")]
-        [SerializeField, Tooltip("Chance for a node to split based on distance to end of path")]
+        [SerializeField, Tooltip("Chance for a node to split based on distance")]
         public AnimationCurve splitChance;
 
         [SerializeField, Tooltip("How much the node will split at minimum if split")]
@@ -43,12 +43,21 @@ namespace Map
         [SerializeField, Tooltip("Maximum depth of splitting a node before rejoining")]
         public int maxSplitDepth = 1;
 
-        [SerializeField, Tooltip("Chance a node will connect to its nearby split neighbors based on distance to end of path")]
+        [SerializeField, Tooltip("Maximum times at each depth an additional split can be made")]
+        public int maxBonusSplits = 1;
+
+        [SerializeField, Tooltip("Chance a node will connect to its neighbor based on distance")]
         public AnimationCurve splitConnectionChance;
+
+        [SerializeField, Tooltip("Chance a split node will not continue to the next node if connected to its neighbor based on distance")]
+        public AnimationCurve detourChance;
 
         [Header("Node Generation")]
         [SerializeField, Tooltip("Weighted nodes to generate along path")]
         public MapNodePolicy[] NodesToGenerate;
+
+        [SerializeField, Tooltip("Weighted nodes to generate for bonus nodes along path")]
+        public MapNodePolicy[] BonusNodesToGenerate;
 
         [SerializeField, Tooltip("Weighted nodes to generate as hidden nodes on paths")]
         public MapNodePolicy[] HiddenNodesToGenerate;
@@ -60,7 +69,11 @@ namespace Map
         public MapNode startingNode;
 
         [SerializeField, Tooltip("Node(s) to end at")]
-        public MapNode[] endingNode;
+        public MapNode[] endingNodes;
+
+        [Header("Aesthetic Details")]
+        [SerializeField, Tooltip("How much noise to apply to node position based on distance")]
+        public AnimationCurve nodeNoisiness;
 
         private void OnValidate()
         {
@@ -70,9 +83,10 @@ namespace Map
             totalPaths = Mathf.Abs(totalPaths);
             if (totalPaths < 1) totalPaths = 1;
             minSplitAmount = Mathf.Clamp(minSplitAmount, 1, int.MaxValue);
-            maxSplitAmount = Mathf.Clamp(minSplitAmount, minSplitAmount, int.MaxValue);
+            maxSplitAmount = Mathf.Clamp(maxSplitAmount, minSplitAmount, int.MaxValue);
             splitDecay = Mathf.Clamp(splitDecay, 0f, Mathf.Infinity);
             maxSplitDepth = Mathf.Clamp(maxSplitDepth, 0, 10);
+            maxBonusSplits = Mathf.Clamp(maxBonusSplits, 1, int.MaxValue);
         }
 
     }
