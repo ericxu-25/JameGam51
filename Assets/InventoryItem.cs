@@ -1,7 +1,7 @@
 using System;
 using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.UI; 
+using UnityEngine.UI;
 
 
 public class InventoryItem : MonoBehaviour
@@ -64,5 +64,49 @@ public class InventoryItem : MonoBehaviour
         size.x = WIDTH * ItemGrid.tileSizeWidth;
         size.y = HEIGHT * ItemGrid.tileSizeHeight;
         GetComponent<RectTransform>().sizeDelta = size;
+        fireRate = itemData.fireRate;
+    }
+
+    [Header("Combat Stats")]
+    [SerializeField] private float fireRate = 2f; // seconds
+    // [SerializeField] private int damage = 5;
+
+    private float fireTimer;
+
+    public void UpdateTimer(float deltaTime)
+    {
+        fireTimer += deltaTime;
+    }
+
+    public bool IsReadyToFire()
+    {
+        return fireTimer >= fireRate;
+    }
+
+    // public void Fire(Stats target)
+    // {
+    //     target.TakeDamage(damage);
+    //     Debug.Log($"{name} fired for {damage} damage!");
+    // }
+
+    public int AttackDmg()
+    {
+        return itemData.attack;
+    }
+
+    public int shieldAmt()
+    {
+        return itemData.shield;
+
+    }
+
+    public int regenHP()
+    {
+        return itemData.hpRegen;
+    }
+
+    public void ResetTimer()
+    {
+        fireTimer = 0f;
     }
 }

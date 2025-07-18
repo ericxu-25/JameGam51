@@ -1,6 +1,8 @@
 using System;
 using UnityEngine;
 using UnityEngine.PlayerLoop;
+using System.Collections.Generic;
+
 
 public class ItemGrid : MonoBehaviour
 {
@@ -196,8 +198,8 @@ public class ItemGrid : MonoBehaviour
     public bool BoundaryCheck(int posX, int posY, int width, int height)
     {
         if (PositionCheck(posX, posY) == false) { return false; }
-        posX += width-1;
-        posY += height-1;
+        posX += width - 1;
+        posY += height - 1;
         if (PositionCheck(posX, posY) == false) { return false; }
         return true;
     }
@@ -225,4 +227,28 @@ public class ItemGrid : MonoBehaviour
 
         return null;
     }
+    
+    public List<InventoryItem> GetAllInventoryItems()
+    {
+        List<InventoryItem> items = new();
+
+        int width = inventoryItemSlot.GetLength(0);
+        int height = inventoryItemSlot.GetLength(1);
+
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                InventoryItem item = inventoryItemSlot[x, y];
+                if (item != null && !items.Contains(item)) // avoid duplicates from multi-slot items
+                {
+                    items.Add(item);
+                }
+            }
+        }
+
+        return items;
+    }
+
+
 }

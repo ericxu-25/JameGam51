@@ -91,7 +91,7 @@ public class Stats : MonoBehaviour
         HP = value;
     }
     
-        public void RechargeShield(int amount)
+    public void RechargeShield(int amount)
     {
         Shield += amount;
         ShieldChanged?.Invoke(_shield);
