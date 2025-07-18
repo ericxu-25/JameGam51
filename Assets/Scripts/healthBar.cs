@@ -23,6 +23,8 @@ public class HealthBar : MonoBehaviour
 
     private void UpdateHealthBar(int health)
     {
+        //can get rid of maxhp later, have it for testing
+        healthSlider.maxValue = stats.MaxHP;
         healthSlider.value = health;
     }
 }

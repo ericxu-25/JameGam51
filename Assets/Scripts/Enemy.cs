@@ -4,7 +4,6 @@ public class Enemy : MonoBehaviour
 {
     [SerializeField] private Stats stats;
     // [SerializeField] private int damage;
-    public int damage = 10;
 
     private void Awake()
     {

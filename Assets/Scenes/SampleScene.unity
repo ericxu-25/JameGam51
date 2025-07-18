@@ -682,7 +682,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 64, y: 64}
+  m_SizeDelta: {x: 252, y: 252}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &554321073
 MonoBehaviour:
@@ -1101,7 +1101,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   stats: {fileID: 1041734724}
-  damage: 10
 --- !u!212 &1041734726
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -1884,7 +1883,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   stats: {fileID: 1714867198}
-  damage: 0
 --- !u!1 &1920630254
 GameObject:
   m_ObjectHideFlags: 0

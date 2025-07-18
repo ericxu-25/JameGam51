@@ -10,13 +10,28 @@ public class Stats : MonoBehaviour
     private int _maxHP = 100;
     private int _hp;
     public int MaxHP => _maxHP;
+    private int _baseDamage = 0;
 
     [Header("Shield")]
     [SerializeField] private int _maxShield = 100;
     private int _shield;
     public int MaxShield => _maxShield;
 
+    public void SetMaxHP(int maxHP)
+    {
+        _maxHP = maxHP;
+        _hp = _maxHP;
+    }
 
+    public void SetBaseDamage(int baseDamage)
+    {
+        _baseDamage = baseDamage;
+    }
+
+    public int GetDamage()
+    {
+        return _baseDamage;
+    }
 
     public int HP
     {

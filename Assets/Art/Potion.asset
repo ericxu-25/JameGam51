@@ -15,3 +15,7 @@ MonoBehaviour:
   width: 1
   height: 2
   itemIcon: {fileID: -2880734798192188640, guid: 7bdf3f7569c06384ab9fc1381853b7ca, type: 3}
+  attack: 0
+  shield: 0
+  hpRegen: 10
+  fireRate: 5

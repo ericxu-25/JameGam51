@@ -3,7 +3,7 @@ using UnityEngine;
 public class Player : MonoBehaviour
 {
     [SerializeField] private Stats stats;
-    public int damage = 10;
+    // public int damage = 10;
 
     private void Awake()
     {

@@ -12,6 +12,10 @@ public class CombatManager : MonoBehaviour
     //iterate the time until cast of weapons by one second
     //for all weapons that cast, deal damage to enemyStats
 
+    //Enemy Attack thingie (constant for now)
+    private float enemyTimer = 0f;
+    private float interval = 1f;
+
     private List<InventoryItem> activeWeapons = new();
     private bool BattleMode = false;
 
@@ -26,6 +30,13 @@ public class CombatManager : MonoBehaviour
                 activeWeapons.Add(weapon);
             }
         }
+
+
+        //Set Enemy Stats
+        enemyStats.SetMaxHP(200);
+        enemyStats.SetBaseDamage(10);
+
+
     }
 
     private void Update()
@@ -48,7 +59,13 @@ public class CombatManager : MonoBehaviour
                 }
             }
 
-            //Enemy does damage
+            //enemy does damage every once per second
+            enemyTimer += Time.deltaTime;
+            if (enemyTimer >= interval)
+            {
+                enemyTimer = 0f;
+                playerStats.Damage(enemyStats.GetDamage());
+            }
         }
 
 
@@ -57,10 +74,20 @@ public class CombatManager : MonoBehaviour
             BattleStart();
             BattleMode = true;
             enemyStats.Died.AddListener(OnEnemyDeath);
+            playerStats.Died.AddListener(OnPlayerDeath);
         }
     }
 
-    private void OnEnemyDeath() => Debug.Log("Enemy died.");
+    private void OnEnemyDeath()
+    {
+        BattleMode = false;
+        Debug.Log("Enemy died.");
+    }
 
+    private void OnPlayerDeath()
+    {
+        BattleMode = false;
+         Debug.Log("Player died.");
+    }
 
 }
