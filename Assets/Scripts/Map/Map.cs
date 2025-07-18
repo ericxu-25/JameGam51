@@ -36,6 +36,11 @@ namespace Map
         private Rect baseRect;
         private bool _started = false;
 
+        public List<MapSegment> Segments { get { return maps; } }
+        public HashSet<MapNode> Nodes { get { return nodes; } }
+
+        public MapNode StartingNode { get { if (maps == null || maps.Count == 0) return null; return maps[0].start; } }
+
         // Start is called once before the first execution of Update after the MonoBehaviour is created
         void Start()
         {
