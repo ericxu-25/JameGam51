@@ -18,8 +18,9 @@ namespace Map
         /// </summary>
         public void SyncPath() { 
             path.line.positionCount = 2;
-            path.line.SetPosition(0, start.transform.position);
-            path.line.SetPosition(1, end.transform.position);
+            path.line.useWorldSpace = false;
+            path.line.SetPosition(0, path.transform.InverseTransformPoint(start.transform.position));
+            path.line.SetPosition(1, path.transform.InverseTransformPoint(end.transform.position));
         }
     }
 
@@ -41,21 +42,45 @@ namespace Map
         public float distance = 0f;
 
         /// <summary>
+        /// Position of the node on the path
+        /// </summary>
+        [HideInInspector]
+        public int index = 0;
+
+        /// <summary>
         /// adjacent neighbors of the node on the same path at the same index (including itself)
         /// Will be just itself if it is a single node, more if a split node
         /// </summary>
         [HideInInspector]
         public List<MapNode> neighbors = null;
 
-        public bool Single { get { return neighbors == null && neighbors.Count == 1; } }
-
-        public int Siblings { get { return (neighbors == null ? 0 : neighbors.Count - 1); } }
-
         /// <summary>
-        /// Whether this node is a bonus node or not (created by splitting twice)
+        /// set of nodes which connect to this node
         /// </summary>
         [HideInInspector]
-        public bool bonus = false;
+        public List<MapNode> fromNodes = null;
+
+        public bool Single { get { return neighbors == null || neighbors.Count <= 1; } }
+        public bool ConnectedToNeighbor
+        {
+            get {
+                if (Single) return false;
+                foreach (MapPath connection in paths) {
+                    if (neighbors.Contains(connection.end)) return true;
+                }
+                return false;
+            }
+        }
+
+        public int Siblings { get { return (Single ? 0 : neighbors.Count - 1); } }
+
+        /// <summary>
+        /// What bonus split depth this node is on
+        /// </summary>
+        [HideInInspector]
+        public int bonus = 0;
+
+        public bool IsBonus { get { return bonus > 0; } }
 
         /// <summary>
         /// Returns if this node is a valid addition as the next node to the current path
@@ -76,7 +101,13 @@ namespace Map
         public void ConnectTo(MapNode nextNode, MapConnection connection) {
             MapPath path = new MapPath(this, nextNode, connection);
             path.SyncPath();
+            if (paths == null) {
+                paths = new List<MapPath>();
+            }
             paths.Add(path);
+            path.path.transform.SetParent(this.transform, true);
+            if (nextNode.fromNodes == null) nextNode.fromNodes = new List<MapNode>();
+            nextNode.fromNodes.Add(this);
         }
 
         /// <summary>
@@ -89,6 +120,7 @@ namespace Map
         }
 
         public void ResetPathConnections() {
+            if (paths == null) return;
             for(int i = 0; i < paths.Count; ++i) {
                 paths[i].SyncPath();
             }
