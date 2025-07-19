@@ -16,7 +16,18 @@ public class Enemy : MonoBehaviour
         stats.ShieldChanged.AddListener(OnShieldChanged);
     }
 
-    private void OnDeath() => Debug.Log("Enemy died.");
+    public Stats GetStats()
+    {
+        return stats;
+    }
+
+
+    private void OnDeath()
+    {
+        Debug.Log("Enemy died.");
+        Destroy(gameObject);
+
+    } 
     private void OnDamaged(int hp) => Debug.Log($"Enemy damaged, HP: {hp}");
     private void OnHealed(int hp) => Debug.Log($"Enemy healed, HP: {hp}");
     private void OnShieldChanged(int shield) => Debug.Log($"Enemy Shield changed: {shield}");
