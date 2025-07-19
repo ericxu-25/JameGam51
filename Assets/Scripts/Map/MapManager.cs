@@ -7,7 +7,6 @@ namespace Map
     /// <summary>
     /// Class which manages the player on each map
     /// </summary>
-    defer
     public class MapManager : Singleton.PersistentSingleton<MapManager>
     {
         [SerializeField, Tooltip("Set of maps in order of traversal")]
