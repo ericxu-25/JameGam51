@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System.Collections;
 
 namespace Map
 {
@@ -26,9 +27,8 @@ namespace Map
 
     /// <summary>
     /// Class which manages each map node and the connections between it
-    /// The base class is intended for nodes where nothing is triggered.
     /// </summary>
-    public class MapNode: MonoBehaviour
+    public abstract class MapNode: MonoBehaviour
     {
         // Instance specific values
 
@@ -116,20 +116,30 @@ namespace Map
             nextNode.fromNodes.Add(this);
         }
 
-        /// <summary>
-        /// Called on each node right after it is generated.
-        /// </summary>
-        /// <param name="currentPath"></param>
-        /// <param name="allPaths"></param>
-        public virtual void OnGenerate(List<MapNode> currentPath, List<List<MapNode>> allPaths) { 
-            
-        }
-
         public void ResetPathConnections() {
             if (paths == null) return;
             for(int i = 0; i < paths.Count; ++i) {
                 paths[i].SyncPath();
             }
         }
+
+        /// <summary>
+        /// Called on each node right after it is generated.
+        /// </summary>
+        /// <param name="currentPath"></param>
+        /// <param name="allPaths"></param>
+        public abstract void OnGenerate(List<MapNode> currentPath, List<List<MapNode>> allPaths);
+
+        /// <summary>
+        /// Called when the player arrives at this node
+        /// </summary>
+        /// <param name="manager"></param>
+        public abstract IEnumerator OnArrive(MapManager manager);
+
+        /// <summary>
+        /// Called when the player arrives at this node
+        /// </summary>
+        /// <param name="manager"></param>
+        public abstract IEnumerator OnLeave(MapManager manager);
     }
 }

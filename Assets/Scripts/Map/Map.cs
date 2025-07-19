@@ -30,21 +30,27 @@ namespace Map
         [SerializeField, Tooltip("Canvas to display the map on and parent nodes to when displaying")]
         private RectTransform mapRoot = null;
 
-        private List<MapSegment> maps = null;
+        private List<MapSegment> segments = null;
         private HashSet<MapNode> nodes = null;
         private GameObject _root = null;
         private Rect baseRect;
         private bool _started = false;
 
-        public List<MapSegment> Segments { get { return maps; } }
+        public List<MapSegment> Segments { get { return segments; } }
         public HashSet<MapNode> Nodes { get { return nodes; } }
 
-        public MapNode StartingNode { get { if (maps == null || maps.Count == 0) return null; return maps[0].start; } }
+        public MapNode StartingNode { get { if (segments == null || segments.Count == 0) return null; return segments[0].start; } }
+        public List<MapNode> EndingNodes { get { if (segments == null || segments.Count == 0) return null; return segments[segments.Count-1].ends; } }
 
-        // Start is called once before the first execution of Update after the MonoBehaviour is created
-        void Start()
+        public GameObject Root { get { return _root; } }
+
+        public void Initialize()
         {
-            maps = new List<MapSegment>();
+            if (_started) {
+                Debug.LogWarning("Map " + this.name + " has already been initialized!");
+                return;
+            }
+            segments = new List<MapSegment>();
             nodes = new HashSet<MapNode>();
             if (MapDefinitions == null || MapDefinitions.Length == 0)
             {
@@ -82,7 +88,7 @@ namespace Map
                 }
                 Destroy(node.gameObject);
             }
-            maps.Clear();
+            segments.Clear();
             nodes.Clear();
             System.GC.Collect();
         }
@@ -112,7 +118,7 @@ namespace Map
                 Debug.LogError("Map modification is not allowed in editor");
                 return;
             }
-            if (maps.Count == 0) {
+            if (segments.Count == 0) {
                 Debug.LogError("Cannot display map when no segment has been generated yet");
                 return;
             }
@@ -143,22 +149,22 @@ namespace Map
             // Display each map segment from right to left
             float currentXMin = fullBounds.xMax;
             float stepSize = fullBounds.width / totalMapWidth;
-            for (int i = maps.Count - 1; i >= 0; --i) {
+            for (int i = segments.Count - 1; i >= 0; --i) {
                 Rect bounds = new Rect(fullBounds);
                 bounds.xMax = currentXMin;
-                currentXMin -= stepSize * maps[i].definition.displayWidth;
+                currentXMin -= stepSize * segments[i].definition.displayWidth;
                 bounds.xMin = currentXMin;
-                bounds.height *= maps[i].definition.displayHeight;
+                bounds.height *= segments[i].definition.displayHeight;
                 bounds.y = fullBounds.y;
                 // add an offset to prevent overlap between start and end nodes
-                if (i != 0) bounds.xMin += bounds.width / (2 + maps[i].definition.maxPathLength);
-                Debug.Log("bounds for of map segment " + i.ToString() + " " + maps[i].definition.name + ": " + bounds.size);
-                DisplayMapSegment(maps[i], bounds);
+                if (i != 0) bounds.xMin += bounds.width / (2 + segments[i].definition.maxPathLength);
+                Debug.Log("bounds for of map segment " + i.ToString() + " " + segments[i].definition.name + ": " + bounds.size);
+                DisplayMapSegment(segments[i], bounds);
                 // Connect the next map segment to this one 
-                if (i == maps.Count - 1) continue;
+                if (i == segments.Count - 1) continue;
                 List<MapNode> startNode = new List<MapNode>();
-                startNode.Add(maps[i + 1].start);
-                ConnectNodes(maps[i].ends, startNode, null, maps[i].definition);
+                startNode.Add(segments[i + 1].start);
+                ConnectNodes(segments[i].ends, startNode, null, segments[i].definition);
             }
         }
 
@@ -166,13 +172,11 @@ namespace Map
         /// Hides the map's nodes without destroying them
         /// </summary>
         public void HideMap() {
-            if (maps.Count == 0) {
+            if (segments.Count == 0) {
                 Debug.LogWarning("Attempted to hide a map that is empty");
                 return;
             }
-            foreach (MapNode node in nodes) {
-                node.gameObject.SetActive(false);
-            }
+            _root.SetActive(false);
         }
 
         /// <summary>
@@ -291,7 +295,7 @@ namespace Map
             // generate each map segment
             foreach (MapDefinition definition in MapDefinitions) {
                 MapSegment newMapSegment = GenerateMapSegment(definition);
-                maps.Add(newMapSegment);
+                segments.Add(newMapSegment);
                 foreach (List<MapNode> path in newMapSegment.paths) {
                     foreach (MapNode node in path) {
                         nodes.Add(node);
