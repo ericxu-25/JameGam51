@@ -689,8 +689,7 @@ namespace Map
                 MapNode hiddenNode = ListHelpers.WeightedRandomFromList(definition.HiddenNodesToGenerate, (MapNodePolicy p) => { return p.weight; }).node;
                 if (hiddenNode != default(MapNode))
                 {
-                    string prefix = "Hidden " + previousNode.name;
-                    hiddenNode = MakeChildCopy(hiddenNode, prefix);
+                    hiddenNode = MakeChildCopy(hiddenNode, prefix: "Hidden ");
                     hiddenNode.transform.SetParent(nodeConnection.transform, false);
                     hiddenNode.gameObject.SetActive(false);
                     hiddenNode.bonus = currentNode.bonus;

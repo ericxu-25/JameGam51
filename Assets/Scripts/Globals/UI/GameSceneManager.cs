@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Collections;
 using System;
+using System.Collections.Generic;
 
 // reference for this part: https://www.wayline.io/blog/using-loadscene-and-loadsceneasync-in-unity
 // another reference: https://www.youtube.com/watch?v=OmobsXZSRKo
@@ -23,14 +24,14 @@ namespace Globals
     }
     public delegate void PauseGameEventHandler(PauseEventArgs e);
 
-    public class NextSceneEventArgs : EventArgs {
-        public NextSceneEventArgs(int nextScene) {
+    public class SceneEventArgs : EventArgs {
+        public SceneEventArgs(int nextScene) {
             this.nextScene = nextScene;
         }
 
         public int nextScene { get; private set; }
     }
-    public delegate void NextSceneEventHandler(NextSceneEventArgs e);
+    public delegate void SceneEventHandler(SceneEventArgs e);
 
     /// <summary>
     /// Manages transitioning between, quitting, and altering global game scene settings (like pausing/unpausing)
@@ -43,6 +44,8 @@ namespace Globals
         [SerializeField] private float GameTimeScale = 1;
         [Tooltip("Name/index of the scene to return to for the menu")]
         [SerializeField] private string menuScene = "0";
+
+        private List<int> OpenScenes;
 
         private bool _busy = false; // flag used to prevent loading multiple things at once
 
@@ -69,7 +72,27 @@ namespace Globals
             }
         }
         public event PauseGameEventHandler PauseGameEvent;
-        public event NextSceneEventHandler NextSceneEvent;
+        public event SceneEventHandler NextSceneEvent;
+        public event SceneEventHandler CloseSceneEvent;
+
+        protected override void Awake()
+        {
+            base.Awake();
+            OpenScenes = new List<int>();
+            OpenScenes.Add(SceneManager.GetActiveScene().buildIndex);
+            SceneManager.sceneLoaded += OnSceneLoaded;
+            SceneManager.sceneUnloaded += OnSceneUnloaded;
+        }
+
+        private void OnSceneUnloaded(Scene scene)
+        {
+            OpenScenes.Remove(scene.buildIndex);
+        }
+
+        private void OnSceneLoaded(Scene scene, LoadSceneMode loadMode)
+        {
+            OpenScenes.Add(scene.buildIndex);
+        }
 
         public static int SceneIndexFromName(string sceneName)
         {
@@ -91,11 +114,11 @@ namespace Globals
         }
 
         // loads the next scene; if no scene name/index given, will load the next in the build index
-        public bool NextScene(string nextScene)
+        public bool NextScene(string nextScene, LoadSceneMode loadMode=LoadSceneMode.Single)
         {
             int nextSceneIndex = SceneIndexFromName(nextScene);
             nextScene = SceneUtility.GetScenePathByBuildIndex(nextSceneIndex);
-            if (!StartBusyCoroutine(LoadScene(nextSceneIndex)))
+            if (!StartBusyCoroutine(LoadScene(nextSceneIndex, loadMode)))
             {
                 Debug.Log("Could not load next scene; in middle of another busy operation.");
                 return false;
@@ -103,14 +126,36 @@ namespace Globals
             Debug.Log("Transitioning to next scene: " + nextScene);
             return true;
         }
-        IEnumerator LoadScene(int sceneBuildIndex)
+
+        // closes the given scene
+        public bool CloseScene(string nextScene)
+        {
+            int nextSceneIndex = SceneIndexFromName(nextScene);
+            nextScene = SceneUtility.GetScenePathByBuildIndex(nextSceneIndex);
+            if (!OpenScenes.Contains(nextSceneIndex)) {
+                Debug.LogError("Attempted to close " + nextScene + " when it isn't open!");
+                return false;
+            }
+            if (OpenScenes.Count == 1) {
+                Debug.LogError("Attempted to close " + nextScene + " when it is the only scene open!");
+                return false;
+            }
+            if (!StartBusyCoroutine(UnloadScene(nextSceneIndex)))
+            {
+                Debug.Log("Could not unload next scene; in middle of another busy operation.");
+                return false;
+            }
+            Debug.Log("Closed scene: " + nextScene);
+            return true;
+        }
+        IEnumerator LoadScene(int sceneBuildIndex, LoadSceneMode loadMode)
         {
             // play animation
             PlayerUIManager.Instance.SetLoadingProgress(0, true);
             yield return PlayerUIManager.Instance.ShowLoadingScreen();
             // begin async loading
-            var scene = SceneManager.LoadSceneAsync(sceneBuildIndex);
-            NextSceneEvent?.Invoke(new NextSceneEventArgs(sceneBuildIndex));
+            var scene = SceneManager.LoadSceneAsync(sceneBuildIndex, loadMode);
+            NextSceneEvent?.Invoke(new SceneEventArgs(sceneBuildIndex));
             scene.allowSceneActivation = false;
             // Unity caps scene loading to 90%
             do
@@ -119,7 +164,7 @@ namespace Globals
                 yield return new WaitForSecondsRealtime(0.002f);
             } while (scene.progress < 0.9f);
             // change to next scene
-            scene.allowSceneActivation = true;
+            scene.allowSceneActivation = true; 
             // complete loading screen
             if (minimumLoadTime > 0)
             {
@@ -129,7 +174,14 @@ namespace Globals
             }
             yield return PlayerUIManager.Instance.HideLoadingScreen();
         }
-
+        IEnumerator UnloadScene(int sceneBuildIndex)
+        {
+            var scene = SceneManager.UnloadSceneAsync(sceneBuildIndex);
+            CloseSceneEvent?.Invoke(new SceneEventArgs(sceneBuildIndex));
+            bool _completed = false;
+            scene.completed += (AsyncOperation a) => { _completed = true; } ;
+            yield return new WaitUntil(() => _completed);
+        }
 
         public void QuitGame()
         {

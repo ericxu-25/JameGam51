@@ -5,7 +5,7 @@ using static Globals.CoroutineHelper;
 namespace Menu
 {
     /// <summary>
-    /// Class which handles a single transition animation
+    /// Class which handles a single transition animation between two states
     /// </summary>
     public class TransitionAnimationScript: MonoBehaviour
     {

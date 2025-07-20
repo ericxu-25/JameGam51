@@ -57,7 +57,7 @@ namespace Map
             // TODO handle hidden nodes and travel messages
             if (HiddenNodes != null && HiddenNodes.Count > 0) {
                 MapManager.Instance.CurrentlyMoving = true;
-                CoroutineHelper.CallbackCoroutine(HandleHiddenNodes(duration), () => MapManager.Instance.CurrentlyMoving = false);
+                StartCoroutine(CoroutineHelper.CallbackCoroutine(HandleHiddenNodes(duration), () => MapManager.Instance.CurrentlyMoving = false));
             }
             if (_travelMessages != null && TravelMessages.Count > 0) { 
                 StartCoroutine(HandleTravelMessages(duration));
@@ -65,6 +65,7 @@ namespace Map
         }
 
         private IEnumerator HandleHiddenNodes(float travelTime) {
+            Debug.Log("Activated Hidden Node on connection: " + HiddenNodes[0].name);
             yield break;
         }
 

@@ -1,12 +1,13 @@
 using UnityEngine;
 
-public class Player : MonoBehaviour
+public class Player : Singleton.RegulatorSingleton<Player> 
 {
     [SerializeField] private Stats stats;
     // public int damage = 10;
 
-    private void Awake()
+    private new void Awake()
     {
+        base.Awake();
         if (stats == null)
             stats = GetComponent<Stats>();
 

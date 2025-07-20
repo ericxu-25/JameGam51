@@ -53,12 +53,12 @@ namespace Map
                     StartCoroutine(MoveTo(nextNode, NoAnimation));
                     return true;
                 }
-                Debug.Log("Requested movement to node " + nextNode.name + " accepted.");
+                Debug.Log("Movement to node " + nextNode.name + " accepted.");
                 path.path.OnTravel(movementTime);
                 StartCoroutine(MoveTo(nextNode, DefaultMoveAnimation));
                 return true;
             }
-            Debug.Log("Requested movement to node " + nextNode.name + " but it is an invalid node.");
+            Debug.Log("Movement to node " + nextNode.name + " rejected.");
             return false;
         }
 

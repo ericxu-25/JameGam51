@@ -14,7 +14,7 @@ namespace Map
     /// <summary>
     /// Definition that describes the properties of a generated map
     /// </summary>
-    [CreateAssetMenu(fileName = "MapCreationPolicy", menuName = "Scriptable Objects/MapCreationPolicy")]
+    [CreateAssetMenu(fileName = "MapDefinition", menuName = "Scriptable Objects/MapDefinition")]
     public class MapDefinition : ScriptableObject
     {
         [SerializeField, Tooltip("Minimum amount of nodes on the path")]

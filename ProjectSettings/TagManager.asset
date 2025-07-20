@@ -12,7 +12,7 @@ TagManager:
   - 
   - Water
   - UI
-  - 
+  - HideFromCamera
   - 
   - 
   - 
@@ -39,8 +39,14 @@ TagManager:
   - 
   - 
   m_SortingLayers:
+  - name: Sprites
+    uniqueID: 748305749
+    locked: 0
   - name: Default
     uniqueID: 0
+    locked: 0
+  - name: Top Level
+    uniqueID: 3801792911
     locked: 0
   m_RenderingLayers:
   - Default

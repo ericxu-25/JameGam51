@@ -12,7 +12,7 @@ namespace Map
     public class MovementNode: MapNode
     {
         private Button _button;
-        public virtual void Start() {
+        public virtual void Initialize() {
             _button = GetComponent<Button>();
             _button.interactable = false;
             _button.onClick.AddListener(Select);
@@ -32,7 +32,7 @@ namespace Map
 
         public override void OnGenerate(List<MapNode> currentPath, List<List<MapNode>> allPaths)
         {
-            Start();
+            Initialize();
         }
 
         public override IEnumerator OnLeave()

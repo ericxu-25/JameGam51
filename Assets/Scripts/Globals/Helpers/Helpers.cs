@@ -83,6 +83,9 @@ namespace Globals
                     totalWeight += Mathf.Abs(weightFunction(list[i]));
                 }
             }
+            if (totalWeight == 0) {
+                return default(T);
+            }
             int choice = Mathf.FloorToInt(Random.value * totalWeight);
             int currentWeight = 0;
             for (int i = 0; i < list.Length; ++i) {
