@@ -522,6 +522,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 617c45d5a1d28d2498cb60bdd757982c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  AutoUnparentOnAwake: 1
+  _deleteOlder: 1
   stats: {fileID: 454363691}
 --- !u!212 &454363693
 SpriteRenderer:
@@ -2326,6 +2328,10 @@ PrefabInstance:
     - target: {fileID: 2302189212891240958, guid: a0b38b7e5989a1241899ae6a60dcf396, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3441571861393044676, guid: a0b38b7e5989a1241899ae6a60dcf396, type: 3}
+      propertyPath: BattleScene
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 4930727992262307356, guid: a0b38b7e5989a1241899ae6a60dcf396, type: 3}
       propertyPath: m_Name
