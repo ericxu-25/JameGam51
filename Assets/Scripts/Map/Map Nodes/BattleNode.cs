@@ -4,21 +4,12 @@ using UnityEngine;
 
 namespace Map
 {
-    public class BattleNode : MapNode
+    public class BattleNode : MovementNode
     {
-        public override IEnumerator OnArrive(MapManager manager)
+        public override IEnumerator OnArrive()
         {
-            throw new System.NotImplementedException();
-        }
-
-        public override void OnGenerate(List<MapNode> currentPath, List<List<MapNode>> allPaths)
-        {
-            throw new System.NotImplementedException();
-        }
-
-        public override IEnumerator OnLeave(MapManager manager)
-        {
-            throw new System.NotImplementedException();
+            // TODO trigger a battle, temporarily disable the map until the 
+            return base.OnArrive();
         }
     }
 }

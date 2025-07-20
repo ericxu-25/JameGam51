@@ -29,7 +29,7 @@ namespace Map
         // path traveling information
         private Map currentMap;
         private int _currentMapIndex;
-        private bool allowMovement = false;
+        private bool allowMovement = true;
         private MapNode currentNode = null;
         private MapNode previousNode = null;
 
@@ -38,6 +38,7 @@ namespace Map
 
         // Interface used by MapNodes
         public bool CanMove { get { return allowMovement; } set { allowMovement = value; } }
+        public bool CurrentlyMoving { get { return _moving; } set { _moving = value; } }
         public Transform Player { get { return player; } }
 
         /// <summary>
@@ -45,60 +46,89 @@ namespace Map
         /// </summary>
         /// <returns> Whether the movement was accepted </returns>
         public bool RequestMove(MapNode nextNode){
+            if (CanMoveTo(nextNode, out MapPath path))
+            {
+                if (path.Equals(default(MapPath))) {
+                    Debug.LogWarning("Moving to " + nextNode.name + " from a null node!");
+                    StartCoroutine(MoveTo(nextNode, NoAnimation));
+                    return true;
+                }
+                Debug.Log("Requested movement to node " + nextNode.name + " accepted.");
+                path.path.OnTravel(movementTime);
+                StartCoroutine(MoveTo(nextNode, DefaultMoveAnimation));
+                return true;
+            }
+            Debug.Log("Requested movement to node " + nextNode.name + " but it is an invalid node.");
+            return false;
+        }
+
+        /// <summary>
+        /// Returns if we can move from the current node to the next node
+        /// Also outputs the path from the current node to the next node
+        /// </summary>
+        /// <param name="nextNode"></param>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        public bool CanMoveTo(MapNode nextNode, out MapPath path) {
+            path = default(MapPath);
             if (nextNode == null) return false;
+            if (nextNode == currentNode) {
+                Debug.Log("Checked movement to " + nextNode.name + " but player is already at that node.");
+                return false;
+            }
             if (!CanMove)
             {
-                Debug.Log("Requested movement to " + nextNode.name + "but movement is disabled.");
+                Debug.Log("Checked movement to " + nextNode.name + " but movement is disabled.");
                 return false;
             }
             if (_moving) { 
-                Debug.Log("Requested movement to " + nextNode.name + "but movement is temporarily disabled.");
+                Debug.Log("Checked movement to " + nextNode.name + " but movement is temporarily disabled.");
                 return false;
             }
             if (currentNode == null)
             {
-                Debug.LogWarning("Moving to " + nextNode.name + " from a null node!");
-                StartCoroutine(MoveTo(nextNode, NoAnimation));
+                Debug.Log("Moving to " + nextNode.name + " from a null node!");
                 return true;
             }
             bool nextNodeConnected = false;
             if (currentNode.paths == null)
             {
-                Debug.Log("Requested movement from " + currentNode.name + " but it is a dead end.");
+                Debug.Log("Checked movement from " + currentNode.name + " but it is a dead end.");
                 if (!allowBacktracking) return false;
             }
             else
             {
-                foreach (MapPath path in currentNode.paths)
+                foreach (MapPath fromPath in currentNode.paths)
                 {
-                    if (path.end == nextNode)
+                    if (fromPath.end == nextNode)
                     {
                         nextNodeConnected = true;
+                        path = fromPath;
                         break;
                     }
                 }
             }
-            if (allowBacktracking) {
+            if (allowBacktracking && !nextNodeConnected) {
                 if (nextNode.paths == null) { 
-                    Debug.Log("Requested movement to " + nextNode.name + " but it is a dead end.");
+                    Debug.Log("Checked movement to " + nextNode.name + " but it is a dead end.");
                     return false;
                 }
-                foreach (MapPath path in nextNode.paths)
+                foreach (MapPath toPath in nextNode.paths)
                 {
-                    if (path.end == currentNode)
+                    if (toPath.end == currentNode)
                     {
                         nextNodeConnected = true;
+                        path = toPath;
                         break;
                     }
                 }
             }
             if (!nextNodeConnected)
             {
-                Debug.Log("Requested movement to " + nextNode.name + " but it is not connected to the current node.");
+                Debug.Log("Checked movement to " + nextNode.name + " but it is not connected to the current node.");
                 return false;
             }
-            Debug.Log("Requested movement to " + nextNode.name + " accepted.");
-            StartCoroutine(MoveTo(nextNode, DefaultMoveAnimation));
+            Debug.Log("Checked movement to " + nextNode.name + " accepted.");
             return true;
         }
 
@@ -117,6 +147,31 @@ namespace Map
                     action.Invoke();
                 }
             }
+        }
+
+        private bool _mapHidden = false;
+        private bool _previousCanMove;
+        public bool IsMapHidden { get { return _mapHidden; } }
+
+        /// <summary>
+        /// Called to hide the current map and temporarily disable movement
+        /// </summary>
+        public void HideCurrentMap() {
+            if (_mapHidden) return;
+            currentMap.HideMap();
+            CanMove = false;
+            _mapHidden = true;
+            _previousCanMove = true;
+        }
+
+        /// <summary>
+        /// Called to show the current map and restore movement state
+        /// </summary>
+        public void ShowCurrentMap() {
+            if (!_mapHidden) return;
+            currentMap.DisplayMap();
+            _mapHidden = true;
+            CanMove = _previousCanMove;
         }
 
         // movement animations 
@@ -147,7 +202,7 @@ namespace Map
                 yield return new WaitForFixedUpdate();
             }
             if (traveledDistance > distance.magnitude) {
-                player.localPosition -= (traveledDistance - distance.magnitude) * distance;
+                player.localPosition -= (traveledDistance - distance.magnitude) * distance.normalized;
             }
         }
 
@@ -161,6 +216,7 @@ namespace Map
             // initialize and generate maps at start
             foreach (Map map in maps) {
                 map.Initialize();
+                map.GenerateMap();
                 map.HideMap();
             }
             // setup first map and starting node
@@ -202,12 +258,39 @@ namespace Map
                 yield break;
             }
             _moving = true;
+            // call OnMoveNearby for any neighboring nodes to the current one
+            if (currentNode && currentNode.paths != null) {
+                foreach (MapPath path in currentNode.paths) {
+                    path.end.OnMoveNearby();
+                }
+            }
+            if (currentNode && currentNode.backPaths != null)
+            {
+                foreach (MapPath path in currentNode.backPaths)
+                {
+                    path.start.OnMoveNearby();
+                }
+            }
+            // do the movement
             previousNode = currentNode;
             currentNode = nextNode;
-            if(previousNode != null) yield return previousNode.OnLeave(this);
+            if(previousNode != null) yield return previousNode.OnLeave();
             // play animation for moving
             yield return movement(previousNode, currentNode);
-            yield return currentNode.OnArrive(this);
+            yield return currentNode.OnArrive();
+            // call OnApproach for any neighboring nodes
+            if (currentNode.paths != null) {
+                foreach (MapPath path in currentNode.paths) {
+                    path.end.OnApproach();
+                }
+            }
+            if (allowBacktracking && currentNode.backPaths != null)
+            {
+                foreach (MapPath path in currentNode.backPaths)
+                {
+                    path.start.OnApproach();
+                }
+            }
             _moving = false;
         }
     }

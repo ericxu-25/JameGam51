@@ -180,6 +180,17 @@ namespace Map
         }
 
         /// <summary>
+        /// Shows the map's nodes 
+        /// </summary>
+        public void ShowMap() {
+            if (segments.Count == 0) {
+                Debug.LogWarning("Attempted to show a map that is empty");
+                return;
+            }
+            _root.SetActive(true);
+        }
+
+        /// <summary>
         /// Takes all the generated map nodes in a segment and displays them in a defined bounds
         /// </summary>
         public void DisplayMapSegment(MapSegment map, Rect bounds) { 
@@ -349,6 +360,7 @@ namespace Map
                 for (int j = 0; j < path.Count; ++j)
                 {
                     MapNode node = path[j];
+                    node.OnGenerate(path, paths);
                     if (node.IsBonus) ++totalBonusNodes;
                     if (j == 0 && totalNodes != 0) { continue; } // only count start node once
                     ++totalNodes;
@@ -671,19 +683,20 @@ namespace Map
             }
             // here we add any hidden nodes to the connection
             if (definition.HiddenNodesToGenerate.Length > 0 && Random.value < definition.HiddenNodeChance.Evaluate((previousNode.distance + currentNode.distance) / 2)) {
-                if(nodeConnection.HiddenNode == null) { 
-                    nodeConnection.HiddenNode = new List<MapNode>();
+                if(nodeConnection.HiddenNodes == null) { 
+                    nodeConnection.HiddenNodes = new List<MapNode>();
                 }
                 MapNode hiddenNode = ListHelpers.WeightedRandomFromList(definition.HiddenNodesToGenerate, (MapNodePolicy p) => { return p.weight; }).node;
                 if (hiddenNode != default(MapNode))
                 {
                     string prefix = "Hidden " + previousNode.name;
                     hiddenNode = MakeChildCopy(hiddenNode, prefix);
+                    hiddenNode.transform.SetParent(nodeConnection.transform, false);
                     hiddenNode.gameObject.SetActive(false);
                     hiddenNode.bonus = currentNode.bonus;
                     hiddenNode.index = currentNode.index;
                     hiddenNode.hidden = true;
-                    nodeConnection.HiddenNode.Add(hiddenNode);
+                    nodeConnection.HiddenNodes.Add(hiddenNode);
                 }
             }
             return nodeConnection;

@@ -105,7 +105,7 @@ MonoBehaviour:
     m_RotationOrder: 4
   NodesToGenerate:
   - weight: 1
-    node: {fileID: 3052304554989794257, guid: 59590edad938b974d95bf656cf0d2f00, type: 3}
+    node: {fileID: 9086669689311762091, guid: 59590edad938b974d95bf656cf0d2f00, type: 3}
   BonusNodesToGenerate: []
   HiddenNodesToGenerate: []
   HiddenNodeChance:
@@ -133,9 +133,9 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   BaseNodeConnector: {fileID: 5362451445624795303, guid: 086e25207548f2d44a5a9933a6083b6f, type: 3}
-  startingNode: {fileID: 3052304554989794257, guid: 59590edad938b974d95bf656cf0d2f00, type: 3}
+  startingNode: {fileID: 9086669689311762091, guid: 59590edad938b974d95bf656cf0d2f00, type: 3}
   endingNodes:
-  - {fileID: 3052304554989794257, guid: 59590edad938b974d95bf656cf0d2f00, type: 3}
+  - {fileID: 9086669689311762091, guid: 59590edad938b974d95bf656cf0d2f00, type: 3}
   noiseMagnitude:
     serializedVersion: 2
     m_Curve:
@@ -161,4 +161,5 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   noiseScale: 5
-  displayWeight: 4
+  displayWidth: 1
+  displayHeight: 1

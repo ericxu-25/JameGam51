@@ -35,6 +35,9 @@ namespace Map
         [HideInInspector, Tooltip("Paths one can travel from this node")]
         public List<MapPath> paths = null;
 
+        [HideInInspector, Tooltip("Paths which travel to this node")]
+        public List<MapPath> backPaths = null;
+
         /// <summary>
         /// distance of this node from the start from 0.0 to 1.0
         /// </summary>
@@ -110,7 +113,11 @@ namespace Map
             if (paths == null) {
                 paths = new List<MapPath>();
             }
+            if (nextNode.backPaths == null) {
+                nextNode.backPaths = new List<MapPath>();
+            }
             paths.Add(path);
+            nextNode.backPaths.Add(path);
             path.path.transform.SetParent(this.transform, true);
             if (nextNode.fromNodes == null) nextNode.fromNodes = new List<MapNode>();
             nextNode.fromNodes.Add(this);
@@ -131,15 +138,24 @@ namespace Map
         public abstract void OnGenerate(List<MapNode> currentPath, List<List<MapNode>> allPaths);
 
         /// <summary>
-        /// Called when the player arrives at this node
+        /// Called when the player starts to move while adjacent to this node
         /// </summary>
-        /// <param name="manager"></param>
-        public abstract IEnumerator OnArrive(MapManager manager);
+        public abstract void OnMoveNearby();
 
         /// <summary>
-        /// Called when the player arrives at this node
+        /// Called when the player finishes movement and can move to this node from the current node 
         /// </summary>
-        /// <param name="manager"></param>
-        public abstract IEnumerator OnLeave(MapManager manager);
+        public abstract void OnApproach();
+
+        /// <summary>
+        /// Called when the player arrives at this node while moving 
+        /// </summary>
+        public abstract IEnumerator OnArrive();
+
+        /// <summary>
+        /// Called when the player leaves this node while moving
+        /// </summary>
+        public abstract IEnumerator OnLeave();
+
     }
 }
