@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Map
 {
-    public class BattleNode : MapNode
+    public class MovementNode: MapNode
     {
         public override IEnumerator OnArrive(MapManager manager)
         {
