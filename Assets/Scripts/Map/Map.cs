@@ -23,12 +23,11 @@ namespace Map
         [SerializeField, Tooltip("Definitions for generating the map. If multiple definitions are used, then each generated definition will be chained together")]
         private MapDefinition[] MapDefinitions;
 
-        [Header("Map Display")]
-        [SerializeField, Tooltip("Horizontal and vertical padding to use around the borders of the map when generating nodes.")]
-        private Vector2 padding = new Vector2(40f, 20f);
+        [HideInInspector]
+        public Vector2 Padding = new Vector2(40f, 20f);
 
-        [SerializeField, Tooltip("Canvas to display the map on and parent nodes to when displaying")]
-        private RectTransform mapRoot = null;
+        [HideInInspector]
+        public RectTransform MapRoot = null;
 
         private List<MapSegment> segments = null;
         private HashSet<MapNode> nodes = null;
@@ -57,7 +56,7 @@ namespace Map
                 Debug.LogError("Must have a valid MapDefinition for map generation");
                 return;
             }
-            if (mapRoot == null) {
+            if (MapRoot == null) {
                 Debug.LogError("Map must have a valid RectTransform to draw on!");
                 return;
             }
@@ -65,7 +64,7 @@ namespace Map
             _root = new GameObject(this.name + " Node Container");
             _root.transform.SetParent(this.transform, false);
             _root.SetActive(false);
-            baseRect = new Rect(mapRoot.rect);
+            baseRect = new Rect(MapRoot.rect);
             foreach (MapDefinition definition in MapDefinitions) {
                 definition.PrintDebug();
             }
@@ -136,16 +135,16 @@ namespace Map
             fullBounds.y += fullBounds.height * (totalMapHeight - 1f) / 2;
             fullBounds.height *= totalMapHeight;
             // adjust our actual transform
-            mapRoot.anchorMin = new Vector2(totalMapWidth / 2, totalMapHeight / 2);
-            mapRoot.anchorMax = mapRoot.anchorMin;
-            mapRoot.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, fullBounds.width);
-            mapRoot.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, fullBounds.height);
+            MapRoot.anchorMin = new Vector2(totalMapWidth / 2, totalMapHeight / 2);
+            MapRoot.anchorMax = MapRoot.anchorMin;
+            MapRoot.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, fullBounds.width);
+            MapRoot.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, fullBounds.height);
             // recalculate bounding box with padding
-            fullBounds = mapRoot.rect;
-            fullBounds.width -= padding.x * 2;
-            fullBounds.x += padding.x;
-            fullBounds.height -= padding.y * 2;
-            fullBounds.y += padding.y;
+            fullBounds = MapRoot.rect;
+            fullBounds.width -= Padding.x * 2;
+            fullBounds.x += Padding.x;
+            fullBounds.height -= Padding.y * 2;
+            fullBounds.y += Padding.y;
             // Display each map segment from right to left
             float currentXMin = fullBounds.xMax;
             float stepSize = fullBounds.width / totalMapWidth;
@@ -200,7 +199,7 @@ namespace Map
                 return;
             }
             // parent the root container for the nodes to the mapRoot
-            _root.transform.SetParent(mapRoot, false);
+            _root.transform.SetParent(MapRoot, false);
             _root.SetActive(true);
             // calculate relevant positioning and noise variables
             float verticalGap = 1f / (map.paths.Count + 1);
