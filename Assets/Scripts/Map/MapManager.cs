@@ -15,6 +15,14 @@ namespace Map
         [SerializeField, Tooltip("Method(s) to call once we attempt to move out of the final map")]
         UnityAction[] OnLeaveLastMap;
 
+
+        [Header("Map Display Settings")]
+        [SerializeField, Tooltip("Horizontal and vertical padding to use around the borders of the map when generating nodes.")]
+        private Vector2 Padding = new Vector2(40f, 20f);
+
+        [SerializeField, Tooltip("Canvas to display the map on and parent nodes to when displaying")]
+        private RectTransform MapRoot;
+
         [Header("Travel Settings")]
 
         [SerializeField, Tooltip("Transform to move from one map node to the other")]
@@ -215,6 +223,8 @@ namespace Map
             }
             // initialize and generate maps at start
             foreach (Map map in maps) {
+                map.Padding = Padding;
+                map.MapRoot = MapRoot;
                 map.Initialize();
                 map.GenerateMap();
                 map.HideMap();
