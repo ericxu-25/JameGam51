@@ -30,9 +30,12 @@ public class InventoryController : MonoBehaviour
 
     InventoryHighlight inventoryHighlight;
 
+    [SerializeField] InventoryDescription inventoryDescription;
+
     private void Awake()
     {
-        inventoryHighlight = GetComponent<InventoryHighlight>();   
+        inventoryHighlight = GetComponent<InventoryHighlight>();
+        inventoryDescription = GetComponent<InventoryDescription>();
     }
 
     // Update is called once per frame
@@ -63,10 +66,12 @@ public class InventoryController : MonoBehaviour
         if (selectedItemGrid == null)
         {
             inventoryHighlight.Show(false);
+            // inventoryDescription.Show(false);
             return;
         }
 
         HandleHighlight();
+        // HandleDescription();
 
         if (Input.GetMouseButtonDown(0))
         {
@@ -104,6 +109,7 @@ public class InventoryController : MonoBehaviour
     InventoryItem itemToHighlight;
     private void HandleHighlight()
     {
+        HandleDescription();
         Vector2Int positionOnGrid = GetTileGridPosition();
         if(oldPosition == positionOnGrid){ return; }
         oldPosition = positionOnGrid;
@@ -134,6 +140,43 @@ public class InventoryController : MonoBehaviour
             inventoryHighlight.SetPosition(selectedItemGrid, selectedItem, positionOnGrid.x, positionOnGrid.y);
         }
     }
+    InventoryItem itemToDescribe;
+    private void HandleDescription()
+    {
+        Vector2Int positionOnGrid = GetTileGridPosition();
+        if (oldPosition == positionOnGrid) { return; }
+        // oldPosition = positionOnGrid;
+        if (selectedItem == null)
+        {
+            itemToDescribe = selectedItemGrid.GetItem(positionOnGrid.x, positionOnGrid.y);
+            if (itemToDescribe != null)
+            {
+                inventoryDescription.Show(true);
+                inventoryDescription.SetSize(itemToDescribe);
+                // inventoryDescription.SetParent(selectedItemGrid);
+                inventoryDescription.SetPosition(selectedItemGrid, itemToDescribe);
+                inventoryDescription.SetDescription(itemToDescribe);
+            }
+            else
+            {
+                inventoryDescription.Show(false);
+            }
+
+        }
+        else
+        {
+            // Debug.Log("Inside the showing description part");
+            inventoryDescription.Show(selectedItemGrid.BoundaryCheck(
+                positionOnGrid.x, positionOnGrid.y,
+                selectedItem.WIDTH, selectedItem.HEIGHT)
+                );
+            inventoryDescription.SetSize(selectedItem);
+            // inventoryDescription.SetParent(selectedItemGrid);
+            inventoryDescription.SetDescription(selectedItem);
+            inventoryDescription.SetPosition(selectedItemGrid, selectedItem, positionOnGrid.x, positionOnGrid.y);
+        }
+    }
+
 
     public void CreateRandomItem()
     {

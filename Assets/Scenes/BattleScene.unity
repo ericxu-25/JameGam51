@@ -612,9 +612,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   items:
-  - {fileID: 11400000, guid: e1378f29833ef4e43add09abacf68672, type: 2}
-  - {fileID: 11400000, guid: 8c7a89c67a3bdd144ac829a92ae3dd7b, type: 2}
-  - {fileID: 11400000, guid: 946ff7597f3a725468ec74bb71ddec09, type: 2}
+  - {fileID: 11400000, guid: 3f8070796fbab3940930cf099f1fdc93, type: 2}
   itemPrefab: {fileID: 7982265315600981227, guid: 8b087bff1b00c3747af207307007cc6e, type: 3}
   canvasTransform: {fileID: 1376419284}
 --- !u!114 &519420034
@@ -738,8 +736,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bdf490cc48097e84bbe491de3382c33f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gridSizeWidth: 5
-  gridSizeHeight: 5
+  gridSizeWidth: 10
+  gridSizeHeight: 10
 --- !u!114 &554321076
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1235,6 +1233,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 617c45d5a1d28d2498cb60bdd757982c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  AutoUnparentOnAwake: 1
+  _deleteOlder: 1
   stats: {fileID: 1041734724}
 --- !u!212 &1041734726
 SpriteRenderer:

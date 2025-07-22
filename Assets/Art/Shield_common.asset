@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f85adf0634e140c42baf08c985aeb439, type: 3}
   m_Name: Shield_common
   m_EditorClassIdentifier: 
-  width: 1
-  height: 1
-  itemIcon: {fileID: 0}
-  attack: 1
-  shield: 1
-  hpRegen: 1
+  width: 2
+  height: 2
+  itemIcon: {fileID: 4029468059478193765, guid: 35fcc9882f2718e4f83cacd11742ab49, type: 3}
+  attack: 0
+  shield: 0
+  hpRegen: 5
   fireRate: 1

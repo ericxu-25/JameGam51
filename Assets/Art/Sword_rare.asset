@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Sword_rare
   m_EditorClassIdentifier: 
   width: 1
-  height: 1
-  itemIcon: {fileID: 0}
-  attack: 1
-  shield: 1
-  hpRegen: 1
-  fireRate: 1
+  height: 2
+  itemIcon: {fileID: -3188448346539854062, guid: 40eb2060164667d48a234ab7ab0d301e, type: 3}
+  attack: 10
+  shield: 0
+  hpRegen: 0
+  fireRate: 2
