@@ -1,19 +1,28 @@
+using System.Collections;
 using UnityEngine;
 
 namespace Map
 {
-    public class WinNode : MonoBehaviour
+    public class WinNode : MovementNode 
     {
-        // Start is called once before the first execution of Update after the MonoBehaviour is created
-        void Start()
+        public string message;
+        public override IEnumerator OnArrive()
         {
-        
+            yield return base.OnArrive();
+            MapManager.Instance.RequestNextMap();
+            yield break;
         }
 
-        // Update is called once per frame
-        void Update()
+        public override void OnConnectTo(MapConnection connection)
         {
-        
+            
+        }
+
+        public override IEnumerator OnMoveTowards()
+        {
+            if(message != null)
+                yield return MapPlayer.Instance.SayText(message, 0f);
+            yield break;
         }
     }
 }

@@ -21,6 +21,12 @@ namespace Map
         [Tooltip("Optional messages the player might say while traveling on this path")]
         public List<string> _travelMessages = null;
 
+        [Tooltip("Optional messages the player might say while traveling backwards on this path")]
+        public List<string> _returnMessages = null;
+
+        // variables used when moving on the path
+        private float lastDistance;
+
         public List<string> TravelMessages
         {
             get
@@ -30,9 +36,12 @@ namespace Map
             }
         }
 
-        public string GetRandomTravelMessage()
+        public List<string> ReturnMessages
         {
-            return ListHelpers.RandomFromList(TravelMessages);
+            get {
+                if (_returnMessages == null) _returnMessages = new List<string>();
+                return _returnMessages;
+            }
         }
 
         public void ClearHiddenNode() {
@@ -47,29 +56,57 @@ namespace Map
         void Awake()
         {
             line = GetComponent<LineRenderer>();
+            lastDistance = 0f;
+        }
+        /// <summary>
+        /// Called when player starts to travel on this path.
+        /// </summary>
+        /// <param name="distance"></param>
+        public void OnTravelStart(bool backtracking = false)
+        {
+            lastDistance = 0f;
+            if (!backtracking && _travelMessages != null && TravelMessages.Count > 0)
+            {
+                StartCoroutine(HandleTravelMessages(TravelMessages));
+            }
+            else if (_returnMessages != null && ReturnMessages.Count > 0) { 
+                StartCoroutine(HandleTravelMessages(ReturnMessages));
+            }
         }
 
         /// <summary>
-        /// Called when player travels on this path
+        /// Called when player travels on this path.
         /// </summary>
-        /// <param name="duration"></param>
-        public void OnTravel(float duration) {
+        /// <param name="distance"></param>
+        public IEnumerator OnTravel(float distance) {
+            if (lastDistance == 1.0f) lastDistance = 0f;
             // TODO handle hidden nodes and travel messages
             if (HiddenNodes != null && HiddenNodes.Count > 0) {
-                MapManager.Instance.CurrentlyMoving = true;
-                StartCoroutine(CoroutineHelper.CallbackCoroutine(HandleHiddenNodes(duration), () => MapManager.Instance.CurrentlyMoving = false));
+                MapManager.Instance.CanMove = false;
+                yield return CoroutineHelper.CallbackCoroutine(HandleHiddenNodes(distance), () => MapManager.Instance.CanMove = true);
             }
-            if (_travelMessages != null && TravelMessages.Count > 0) { 
-                StartCoroutine(HandleTravelMessages(duration));
-            }
+            lastDistance = distance;
         }
 
-        private IEnumerator HandleHiddenNodes(float travelTime) {
-            Debug.Log("Activated Hidden Node on connection: " + HiddenNodes[0].name);
+        private static bool Between(float value, float start, float end) { 
+            if (start < end) return start <= value && end >= value;
+            else return end <= value && start >= value;
+        }
+
+        private IEnumerator HandleHiddenNodes(float currentDistance) {
+            for (int i = 0; i < HiddenNodes.Count; ++i) {
+                if (Between(1.0f/(HiddenNodes.Count + 1), lastDistance, currentDistance)) 
+                {
+                    Debug.Log("Activated Hidden Node on connection: " + HiddenNodes[i].name);
+                    yield return HiddenNodes[i].OnArrive();
+                    yield return HiddenNodes[i].OnLeave();
+                }
+            }
             yield break;
         }
 
-        private IEnumerator HandleTravelMessages(float travelTime) { 
+        private IEnumerator HandleTravelMessages(List<string> messages) {
+            MapPlayer.Instance.Say(ListHelpers.RandomFromList(messages));
             yield break;
         }
     }

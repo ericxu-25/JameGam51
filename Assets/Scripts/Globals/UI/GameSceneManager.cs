@@ -48,6 +48,7 @@ namespace Globals
         private List<int> OpenScenes;
 
         private bool _busy = false; // flag used to prevent loading multiple things at once
+        public bool Busy { get { return _busy; } }
 
         /// <summary>
         /// Internal method to start a busy coroutine which cannot be run if another busy coroutine started in the same script is not finished.
@@ -94,7 +95,9 @@ namespace Globals
             OpenScenes.Add(scene.buildIndex);
         }
 
-        public static int SceneIndexFromName(string sceneName)
+        
+
+        public static int AbsoluteSceneIndexFromName(string sceneName)
         {
             int nextSceneIndex = -1;
             if (!string.IsNullOrEmpty(sceneName))
@@ -105,6 +108,11 @@ namespace Globals
                     nextSceneIndex = SceneManager.GetSceneByName(sceneName).buildIndex;
                 }
             }
+            return nextSceneIndex;
+        }
+        public static int SafeSceneIndexFromName(string sceneName)
+        {
+            int nextSceneIndex = AbsoluteSceneIndexFromName(sceneName);
             if (nextSceneIndex < 0)
             {
                 Debug.LogWarning("Could not find " + sceneName + " in available scenes, defaulting to next scene...");
@@ -116,7 +124,7 @@ namespace Globals
         // loads the next scene; if no scene name/index given, will load the next in the build index
         public bool NextScene(string nextScene, LoadSceneMode loadMode=LoadSceneMode.Single)
         {
-            int nextSceneIndex = SceneIndexFromName(nextScene);
+            int nextSceneIndex = SafeSceneIndexFromName(nextScene);
             nextScene = SceneUtility.GetScenePathByBuildIndex(nextSceneIndex);
             if (!StartBusyCoroutine(LoadScene(nextSceneIndex, loadMode)))
             {
@@ -127,10 +135,29 @@ namespace Globals
             return true;
         }
 
+        /// <summary>
+        /// Loads a given scene in a coroutine
+        /// </summary>
+        /// <param name="nextScene"></param>
+        /// <param name="loadMode"></param>
+        /// <returns></returns>
+        public IEnumerator NextSceneAsync(string nextScene, LoadSceneMode loadMode = LoadSceneMode.Single) { 
+            int nextSceneIndex = SafeSceneIndexFromName(nextScene);
+            nextScene = SceneUtility.GetScenePathByBuildIndex(nextSceneIndex);
+            if (_busy) { 
+                Debug.Log("Transitioning to next scene: " + nextScene + "... but waiting until other busy operation completes.");
+            }
+            yield return new WaitWhile(() => _busy);
+            _busy = true;
+            Debug.Log("Transitioning to next scene: " + nextScene);
+            yield return LoadScene(nextSceneIndex, loadMode);
+            _busy = false;
+        }
+
         // closes the given scene
         public bool CloseScene(string nextScene)
         {
-            int nextSceneIndex = SceneIndexFromName(nextScene);
+            int nextSceneIndex = SafeSceneIndexFromName(nextScene);
             nextScene = SceneUtility.GetScenePathByBuildIndex(nextSceneIndex);
             if (!OpenScenes.Contains(nextSceneIndex)) {
                 Debug.LogError("Attempted to close " + nextScene + " when it isn't open!");
@@ -181,6 +208,15 @@ namespace Globals
             bool _completed = false;
             scene.completed += (AsyncOperation a) => { _completed = true; } ;
             yield return new WaitUntil(() => _completed);
+        }
+
+        public bool IsSceneOpen(string scene) { 
+            int nextSceneIndex = SafeSceneIndexFromName(scene);
+            if (nextSceneIndex < 0) return false; 
+            if (OpenScenes.Contains(nextSceneIndex)) {
+                return true;
+            }
+            return false;
         }
 
         public void QuitGame()

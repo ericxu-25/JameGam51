@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class Player : Singleton.RegulatorSingleton<Player> 
 {
-    [SerializeField] private Stats stats;
+    [SerializeField] public Stats stats;
     // public int damage = 10;
 
     private new void Awake()

@@ -219,6 +219,8 @@ namespace Map
                 bool middlePath = (i == Mathf.FloorToInt(map.paths.Count / 2));
                 int pathEnd = path.Count - (middlePath ? 0 : map.ends.Count);
                 // if (middlePath) Debug.Log("Generating middle path");
+                // need to order nodes by distance to ensure they are drawn correctly
+                path.Sort((MapNode node1, MapNode node2) => { return node1.distance < node2.distance ? -1 : node1.distance == node2.distance ? 0 : 1; });
                 int sliceIndex = 0;
                 int sliceSubIndex = 0;
                 List<MapNode> slice = new List<MapNode>();
@@ -695,6 +697,7 @@ namespace Map
                     hiddenNode.index = currentNode.index;
                     hiddenNode.hidden = true;
                     nodeConnection.HiddenNodes.Add(hiddenNode);
+                    hiddenNode.OnHiddenConnectTo(nodeConnection);
                 }
             }
             return nodeConnection;

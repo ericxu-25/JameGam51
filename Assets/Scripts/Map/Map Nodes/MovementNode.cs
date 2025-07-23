@@ -50,5 +50,22 @@ namespace Map
         {
             _button.interactable = true;
         }
+
+        public override void OnConnectFrom(MapConnection connection)
+        {
+        }
+
+        public override void OnConnectTo(MapConnection connection)
+        {
+        }
+
+        public override void OnHiddenConnectTo(MapConnection connection)
+        {
+        }
+
+        public override IEnumerator OnMoveTowards()
+        {
+            yield break;
+        }
     }
 }

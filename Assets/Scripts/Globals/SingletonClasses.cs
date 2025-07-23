@@ -112,8 +112,9 @@ namespace Singleton
                 T[] oldInstances = FindObjectsByType<T>(FindObjectsSortMode.None);
                 foreach (T old in oldInstances)
                 {
-                    if (old.GetComponent<RegulatorSingleton<T>>().InitializationTime < InitializationTime)
+                    if (old.GetComponent<RegulatorSingleton<T>>().InitializationTime <= InitializationTime)
                     {
+                        if (old.GetComponent<RegulatorSingleton<T>>() == this) continue;
                         Destroy(old.gameObject);
                     }
                 }

@@ -135,7 +135,7 @@ MonoBehaviour:
   BaseNodeConnector: {fileID: 5362451445624795303, guid: 086e25207548f2d44a5a9933a6083b6f, type: 3}
   startingNode: {fileID: 9086669689311762091, guid: 59590edad938b974d95bf656cf0d2f00, type: 3}
   endingNodes:
-  - {fileID: 9086669689311762091, guid: 59590edad938b974d95bf656cf0d2f00, type: 3}
+  - {fileID: 3537261694361684071, guid: a151b2c15f626bb43b85cfd61b73e86d, type: 3}
   noiseMagnitude:
     serializedVersion: 2
     m_Curve:
@@ -160,6 +160,6 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  noiseScale: 5
+  noiseScale: 1.2
   displayWidth: 1
   displayHeight: 1

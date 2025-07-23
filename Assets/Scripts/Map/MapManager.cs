@@ -13,8 +13,7 @@ namespace Map
         Map[] maps;
 
         [SerializeField, Tooltip("Method(s) to call once we attempt to move out of the final map")]
-        UnityAction[] OnLeaveLastMap;
-
+        UnityEvent OnLeaveLastMap;
 
         [Header("Map Display Settings")]
         [SerializeField, Tooltip("Horizontal and vertical padding to use around the borders of the map when generating nodes.")]
@@ -43,6 +42,8 @@ namespace Map
 
         // flags
         private bool _moving = false;
+        private bool _paused = false;
+        public bool PauseMovement { get { return _paused; } set { _paused = value; } }
 
         // Interface used by MapNodes
         public bool CanMove { get { return allowMovement; } set { allowMovement = value; } }
@@ -58,12 +59,11 @@ namespace Map
             {
                 if (path.Equals(default(MapPath))) {
                     Debug.LogWarning("Moving to " + nextNode.name + " from a null node!");
-                    StartCoroutine(MoveTo(nextNode, NoAnimation));
+                    StartCoroutine(MoveTo(nextNode, null, NoAnimation));
                     return true;
                 }
                 Debug.Log("Movement to node " + nextNode.name + " accepted.");
-                path.path.OnTravel(movementTime);
-                StartCoroutine(MoveTo(nextNode, DefaultMoveAnimation));
+                StartCoroutine(MoveTo(nextNode, path.path, DefaultMoveAnimation));
                 return true;
             }
             Debug.Log("Movement to node " + nextNode.name + " rejected.");
@@ -145,15 +145,15 @@ namespace Map
         /// </summary>
         public void RequestNextMap(){
             if (_currentMapIndex + 1 < maps.Length) {
+                Debug.Log("Moving to the next map.");
                 MoveToMap(_currentMapIndex + 1);
             }
             else
             {
                 // we've reached the last map! 
                 if (OnLeaveLastMap == null) return;
-                foreach (UnityAction action in OnLeaveLastMap) {
-                    action.Invoke();
-                }
+                Debug.Log("Reached the end of the last map!");
+                OnLeaveLastMap?.Invoke();
             }
         }
 
@@ -166,6 +166,7 @@ namespace Map
         /// </summary>
         public void HideCurrentMap() {
             if (_mapHidden) return;
+            Debug.Log("Hiding current map");
             currentMap.HideMap();
             CanMove = false;
             _mapHidden = true;
@@ -177,18 +178,20 @@ namespace Map
         /// </summary>
         public void ShowCurrentMap() {
             if (!_mapHidden) return;
+            Debug.Log("Showing current map");
             currentMap.DisplayMap();
-            _mapHidden = true;
+            _mapHidden = false;
             CanMove = _previousCanMove;
         }
 
-        // movement animations 
-        private delegate IEnumerator MovementAnimation(MapNode startingNode, MapNode endingNode);
-        IEnumerator NoAnimation(MapNode startingNode, MapNode endingNode) {
+        // movement animations - handle moving the player on a connection between two nodes
+        private delegate IEnumerator MovementAnimation(MapNode startingNode, MapNode endingNode, MapConnection connection);
+        IEnumerator NoAnimation(MapNode startingNode, MapNode endingNode, MapConnection connection) {
+            if (connection != null) yield return connection.OnTravel(1.0f);
             player.localPosition = endingNode.transform.localPosition;
             yield return null;
         }
-        IEnumerator DefaultMoveAnimation(MapNode startingNode, MapNode endingNode) {
+        IEnumerator DefaultMoveAnimation(MapNode startingNode, MapNode endingNode, MapConnection connection) {
             if (startingNode == null) {
                 Debug.LogError("Attempted default move animation on a null node!");
                 yield return new WaitForSeconds(movementTime);
@@ -204,13 +207,16 @@ namespace Map
                     player.localPosition += distance;
                     yield break;
                 }
+                if (connection != null) yield return connection.OnTravel(traveledDistance/distance.magnitude);
                 Vector3 frameDistance = distance * Time.fixedDeltaTime / movementTime;
                 player.localPosition += frameDistance;
                 traveledDistance += frameDistance.magnitude;
+                yield return new WaitUntil(() => !PauseMovement);
                 yield return new WaitForFixedUpdate();
             }
             if (traveledDistance > distance.magnitude) {
                 player.localPosition -= (traveledDistance - distance.magnitude) * distance.normalized;
+                yield return connection.OnTravel(1.0f);
             }
         }
 
@@ -238,6 +244,7 @@ namespace Map
         /// </summary>
         /// <param name="mapIndex"></param>
         void MoveToMap(int mapIndex) {
+            Debug.Log("Moving to map #" + mapIndex.ToString());
             if (mapIndex >= maps.Length) {
                 Debug.LogError("Out of bounds map movement");
                 return;
@@ -247,17 +254,17 @@ namespace Map
                 currentMap.HideMap();
             }
             _currentMapIndex = mapIndex;
-            currentMap = maps[0];
+            currentMap = maps[mapIndex];
             currentMap.DisplayMap();
             currentNode = currentMap.StartingNode;
             player.SetParent(map.Root.transform);
-            StartCoroutine(MoveTo(currentNode, NoAnimation));
+            StartCoroutine(MoveTo(currentNode, null, NoAnimation));
         }
 
         /// <summary>
-        /// Moves from the current node to some next node
+        /// Moves from the current node to some next node on some connection 
         /// </summary>
-        IEnumerator MoveTo(MapNode nextNode, MovementAnimation movement) {
+        IEnumerator MoveTo(MapNode nextNode, MapConnection connection, MovementAnimation movement) {
             if (_moving)
             {
                 yield return new WaitUntil(() => !_moving);
@@ -285,8 +292,22 @@ namespace Map
             previousNode = currentNode;
             currentNode = nextNode;
             if(previousNode != null) yield return previousNode.OnLeave();
+            // handle starting to travel on the connection 
+            if (connection != null) {
+                bool backtracking = allowBacktracking;
+                if (backtracking) {
+                    foreach (MapPath path in previousNode.paths) {
+                        if (path.path == connection) {
+                            backtracking = false;
+                            break;
+                        }
+                    }
+                }
+                connection.OnTravelStart(backtracking);
+            }
             // play animation for moving
-            yield return movement(previousNode, currentNode);
+            yield return nextNode.OnMoveTowards();
+            yield return movement(previousNode, currentNode, connection);
             yield return currentNode.OnArrive();
             // call OnApproach for any neighboring nodes
             if (currentNode.paths != null) {

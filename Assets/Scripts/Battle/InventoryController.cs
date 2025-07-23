@@ -88,7 +88,7 @@ public class InventoryController : MonoBehaviour
 
     private void InsertRandomItem()
     {
-        if (selectedItemGrid == null){ Debug.Log("selectedItemGrid is  null in insertRandomItem"); return; }
+        if (selectedItemGrid == null){ Debug.Log("selectedItemGrid is null in insertRandomItem"); return; }
         CreateRandomItem();
         InventoryItem itemToInsert = selectedItem;
         selectedItem = null;
@@ -109,9 +109,10 @@ public class InventoryController : MonoBehaviour
     InventoryItem itemToHighlight;
     private void HandleHighlight()
     {
-        HandleDescription();
+        
         Vector2Int positionOnGrid = GetTileGridPosition();
         if(oldPosition == positionOnGrid){ return; }
+        HandleDescription(); 
         oldPosition = positionOnGrid;
         if (selectedItem == null)
         {

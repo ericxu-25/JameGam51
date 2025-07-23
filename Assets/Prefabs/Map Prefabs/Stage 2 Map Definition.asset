@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d5fb6f8115134ca49abf1823e4646754, type: 3}
-  m_Name: Stage1 Map Definition
+  m_Name: Stage 2 Map Definition
   m_EditorClassIdentifier: 
-  minPathLength: 1
-  maxPathLength: 1
-  totalPaths: 3
+  minPathLength: 4
+  maxPathLength: 6
+  totalPaths: 4
   seed: 789259513
   useSeed: 0
   splitChance:
@@ -104,9 +104,9 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   NodesToGenerate:
-  - weight: 10
+  - weight: 5
     node: {fileID: 3441571861393044676, guid: a0b38b7e5989a1241899ae6a60dcf396, type: 3}
-  - weight: 1
+  - weight: 5
     node: {fileID: 9086669689311762091, guid: 59590edad938b974d95bf656cf0d2f00, type: 3}
   BonusNodesToGenerate: []
   HiddenNodesToGenerate:
@@ -117,16 +117,16 @@ MonoBehaviour:
     m_Curve:
     - serializedVersion: 3
       time: 0
-      value: 1
-      inSlope: -1.25
-      outSlope: -1.25
+      value: 0
+      inSlope: 1
+      outSlope: 1
       tangentMode: 34
       weightedMode: 0
       inWeight: 0
       outWeight: 0.33333334
     - serializedVersion: 3
-      time: 0.8
-      value: 0
+      time: 0.5
+      value: 0.5
       inSlope: 0
       outSlope: 0
       tangentMode: 0
@@ -136,8 +136,8 @@ MonoBehaviour:
     - serializedVersion: 3
       time: 1
       value: 0
-      inSlope: 0
-      outSlope: 0
+      inSlope: -1
+      outSlope: -1
       tangentMode: 34
       weightedMode: 0
       inWeight: 0.33333334
@@ -148,31 +148,40 @@ MonoBehaviour:
   BaseNodeConnector: {fileID: 5362451445624795303, guid: 086e25207548f2d44a5a9933a6083b6f, type: 3}
   startingNode: {fileID: 9086669689311762091, guid: 59590edad938b974d95bf656cf0d2f00, type: 3}
   endingNodes:
-  - {fileID: 5009913061835778573, guid: 628cdb5d888536341b01126a166593ed, type: 3}
+  - {fileID: 3537261694361684071, guid: a151b2c15f626bb43b85cfd61b73e86d, type: 3}
   noiseMagnitude:
     serializedVersion: 2
     m_Curve:
     - serializedVersion: 3
       time: 0
-      value: 0.5
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
+      value: 0
+      inSlope: 0.4
+      outSlope: 0.4
+      tangentMode: 34
       weightedMode: 0
       inWeight: 0
-      outWeight: 0
+      outWeight: 0.33333334
     - serializedVersion: 3
-      time: 1
+      time: 0.5
       value: 0.2
       inSlope: 0
       outSlope: 0
       tangentMode: 0
       weightedMode: 0
-      inWeight: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: -0.4
+      outSlope: -0.4
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0.33333334
       outWeight: 0
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  noiseScale: 0.8
-  displayWidth: 1
+  noiseScale: 1.2
+  displayWidth: 2
   displayHeight: 1

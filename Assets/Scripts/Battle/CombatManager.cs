@@ -4,13 +4,12 @@ using UnityEngine.UI;
 using TMPro;
 // using System.Numerics;
 
-public class CombatManager : MonoBehaviour
+public class CombatManager : Singleton.PersistentSingleton<CombatManager>
 {
     // Start is called once before the first execution of Update after the MonoBehaviour is created
 
     public Enemy enemyPrefab;
     public Transform enemyPoint;
-    [SerializeField] private Stats playerStats;
     [SerializeField] private Enemy enemy;
     private Stats enemyStats;
     [SerializeField] private ItemGrid playerGrid;
@@ -27,17 +26,34 @@ public class CombatManager : MonoBehaviour
     private int enemyDMG = 10;
 
     private List<InventoryItem> activeWeapons = new();
-    private bool BattleMode = false;
+    private bool _battleMode = false;
+    public bool BattleMode { get { return _battleMode; } }
+    private bool _waitingToStart = false;
+    public bool WaitingToStart { get { return _waitingToStart; } }
     public Button battleButton;
+    public Button continueButton;
     public Button rewardButton;
+
+    public void Start()
+    {
+        battleButton.onClick.AddListener(BattleStart);
+        continueButton.onClick.AddListener(ReturnToMap);
+        rewardButton.onClick.AddListener(RewardClaimed);
+        battleButton.gameObject.SetActive(true);
+        continueButton.gameObject.SetActive(false);
+        rewardButton.gameObject.SetActive(false);
+    }
 
     public void BattleStart()
     {
         //turn off the button
+        _waitingToStart = false;
+        Player.Instance.gameObject.SetActive(true);
         battleButton.gameObject.SetActive(false);
+        continueButton.gameObject.SetActive(false);
 
         //set Player stats
-        playerStats.HealFull();
+        Player.Instance.stats.HealFull();
         // Get all unique weapons from the grid
         var items = playerGrid.GetAllInventoryItems();
         foreach (var item in items)
@@ -62,9 +78,9 @@ public class CombatManager : MonoBehaviour
         enemyStats.SetBaseDamage(enemyDMG);
 
 
-        BattleMode = true;
+        _battleMode = true;
         enemyStats.Died.AddListener(OnEnemyDeath);
-        playerStats.Died.AddListener(OnPlayerDeath);
+        Player.Instance.stats.Died.AddListener(OnPlayerDeath);
         enemyTimer = 0f;
         playerTimer = 0f;
         interval = 1f;
@@ -73,17 +89,17 @@ public class CombatManager : MonoBehaviour
 
     private void Update()
     {
-        if (BattleMode == true)
+        if (_battleMode == true)
         {
             //Player does damage w weapons + base damage
-            WeaponsFire(playerStats, enemyStats);
+            WeaponsFire(Player.Instance.stats, enemyStats);
 
             //enemy does damage every once per second
             enemyTimer += Time.deltaTime;
             if (enemyTimer >= interval)
             {
                 enemyTimer = 0f;
-                playerStats.Damage(enemyStats.GetDamage());
+                Player.Instance.stats.Damage(enemyStats.GetDamage());
             }
         }
     }
@@ -114,7 +130,7 @@ public class CombatManager : MonoBehaviour
 
     private void OnEnemyDeath()
     {
-        BattleMode = false;
+        _battleMode = false;
         Debug.Log("Enemy died.");
         rewardButton.gameObject.SetActive(true);
 
@@ -133,7 +149,7 @@ public class CombatManager : MonoBehaviour
 
     private void OnPlayerDeath()
     {
-        BattleMode = false;
+        _battleMode = false;
         Debug.Log("Player died.");
         battleButton.GetComponentInChildren<TextMeshProUGUI>().text = "Try Again!";
         battleButton.gameObject.SetActive(true);
@@ -142,8 +158,14 @@ public class CombatManager : MonoBehaviour
     public void RewardClaimed()
     {
         rewardButton.gameObject.SetActive(false);
-        battleButton.GetComponentInChildren<TextMeshProUGUI>().text = "Next Battle!";
+        continueButton.gameObject.SetActive(true);
+    }
+
+    public void ReturnToMap() {
         battleButton.gameObject.SetActive(true);
+        continueButton.gameObject.SetActive(false);
+        _waitingToStart = true;
+        battleButton.GetComponentInChildren<TextMeshProUGUI>().text = "Start Battle";
     }
 
 

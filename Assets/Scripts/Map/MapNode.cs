@@ -109,6 +109,8 @@ namespace Map
         /// <param name="connection"></param>
         public void ConnectTo(MapNode nextNode, MapConnection connection) {
             MapPath path = new MapPath(this, nextNode, connection);
+            OnConnectFrom(connection);
+            nextNode.OnConnectTo(connection);
             path.SyncPath();
             if (paths == null) {
                 paths = new List<MapPath>();
@@ -131,6 +133,22 @@ namespace Map
         }
 
         /// <summary>
+        /// Called when a map connection is generated with this node as the start
+        /// </summary>
+        public abstract void OnConnectFrom(MapConnection connection); 
+
+        /// <summary>
+        /// Called when a map connection is generated with this node as the end 
+        /// </summary>
+        public abstract void OnConnectTo(MapConnection connection); 
+
+        /// <summary>
+        /// Called when a map connection is generated with this node as a hidden node
+        /// </summary>
+        public abstract void OnHiddenConnectTo(MapConnection connection); 
+
+
+        /// <summary>
         /// Called on each node right after it is generated.
         /// </summary>
         /// <param name="currentPath"></param>
@@ -141,6 +159,11 @@ namespace Map
         /// Called when the player starts to move while adjacent to this node
         /// </summary>
         public abstract void OnMoveNearby();
+
+        /// <summary>
+        /// Called when the player successfully requests to move to this node 
+        /// </summary>
+        public abstract IEnumerator OnMoveTowards();
 
         /// <summary>
         /// Called when the player finishes movement and can move to this node from the current node 
@@ -156,6 +179,7 @@ namespace Map
         /// Called when the player leaves this node while moving
         /// </summary>
         public abstract IEnumerator OnLeave();
+
 
     }
 }

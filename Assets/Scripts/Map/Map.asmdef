@@ -3,7 +3,9 @@
     "rootNamespace": "Map",
     "references": [
         "GUID:029e0103506034b4fb391ab68dbc61be",
-        "GUID:b8e690d8df9bed44ab827a5138ee48f4"
+        "GUID:b8e690d8df9bed44ab827a5138ee48f4",
+        "GUID:4b3787953e562b04e88a4e6932b52e92",
+        "GUID:6055be8ebefd69e48b49212b09b47b2f"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
